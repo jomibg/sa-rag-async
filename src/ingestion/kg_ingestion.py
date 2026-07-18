@@ -150,6 +150,14 @@ class AdvancedKGIngestor:
                 session, h, t, rel, r_emb
             )
 
+    async def create_vector_index(self, session):
+        query = (
+            "CREATE VECTOR INDEX textEmbedding IF NOT EXISTS "
+            "FOR (n:Document) ON n.embedding"
+        )
+        result = await session.run(query)
+        await result.consume()
+
     # ---- Async pipeline: producer / K extractors / 1 writer ----
     async def ingest(self, corpus_list: List[str], concurrency: int = 4):
         chunks = list(
@@ -237,4 +245,9 @@ class AdvancedKGIngestor:
             *[extractor() for _ in range(concurrency)],
             writer(),
         )
+
+        # ---- Final step: create vector index for Document embeddings ----
+        async with self.driver.session() as session:
+            await self.create_vector_index(session)
+            
         await self.driver.close()
