@@ -34,7 +34,9 @@ class AdvancedKGConstructor:
     def __init__(self, template_ner_loc: str, template_re_loc: str, #embedding_pipeline: Any,
                  llm_endpoint_url: str,
                  llm_api_key: str,
-                 ner_model: str = "qwen2.5:3b", re_model: str = "hermes3"):
+                 ner_model: str = "qwen2.5:3b",
+                 re_model: str = "hermes3",
+                 embedding_model: str = "bge-large:latest"):
         """Initializes the KnowledgeGraphConstructor.
 
         Loads the templates for named entity recognition (NER) and relationship extraction (RE)
@@ -44,8 +46,7 @@ class AdvancedKGConstructor:
         Args:
             template_ner_loc: The file path to the NER template.
             template_re_loc: The file path to the RE template.
-            embedding_pipeline: An instance of an embedding pipeline for creating
-                embeddings from textual data.
+            embedding_model: Name of embedding model for creating embeddings from textual data.
             llm_endpoint_url: URL for the LLM API endpoint.
             ner_model: The language model identifier to be used for NER.
                 Defaults to "qwen2.5:3b".
@@ -60,6 +61,21 @@ class AdvancedKGConstructor:
             self.template_re = file.read()
         self.ner_model = ner_model
         self.re_model = re_model
+        self.embedding_model = embedding_model
+
+
+    async def _embed(self, texts: List[str]) -> List[List[float]]:
+        """Batched async embedding call against Ollama's /v1/embeddings.
+        Returns an empty list when `texts` is empty so callers can zip safely."""
+        if not texts:
+            return []
+        resp = await self.client.embeddings.create(
+            model=self.embedding_model,
+            input=texts,
+        )
+        # Newer openai-python versions expose `.data` sorted by index; sort defensively.
+        return [d.embedding for d in sorted(resp.data, key=lambda d: d.index)]
+
 
     async def _extract_entities(self, text: str) -> List[Dict]:
         """Extracts named entities from the given text using the NER template.
@@ -83,7 +99,6 @@ class AdvancedKGConstructor:
         
         return parsed.root
 
-#TODO: implement relationship and entity embeddings
 
     async def _extract_relationships(self, text: str, ner_list: str):
         """Extracts relationships from the given text by leveraging NER and RE templates.
@@ -135,6 +150,28 @@ class AdvancedKGConstructor:
         """
         entities = await self._extract_entities(text)
         entity_names = [e.name for e in entities]
-        #embedded_entities = self._create_entity_embeddings(entities)
         relationships = await self._extract_relationships(text, ner_list=str(entity_names))
-        return entities, relationships#, relation_embeddings
+        
+        # EMBEDDINGS 
+        # Textualization you will embed. Keep ordering stable; we zip by index below.
+        doc_text = text
+        desc_texts = [e.entity_information or "" for e in entities]
+        rel_texts = [f"{h} {rel} {t}" for (h, t, rel) in relationships]
+
+        # One batched embedding call per chunk — amortizes Ollama overhead.
+        # Order: [doc, *descs, *rels]
+        all_texts = [doc_text, *desc_texts, *rel_texts]
+        vectors = await self._embed(all_texts)
+
+        chunk_embedding = vectors[0]
+        n_desc = len(desc_texts)
+        entity_descriptor_embeddings = vectors[1 : 1 + n_desc]
+        relation_embeddings = vectors[1 + n_desc :]
+
+        return (
+            entities,
+            relationships,
+            chunk_embedding,
+            entity_descriptor_embeddings,
+            relation_embeddings,
+        )
