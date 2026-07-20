@@ -7,7 +7,6 @@ from tqdm.asyncio import tqdm_asyncio
 async def retrieve_generate(
     pipeline: RetrievalPipeline,
     questions: Sequence[str],
-    *,
     max_concurrency: int = 4,
     show_progress: bool = True,
     return_exceptions: bool = False,

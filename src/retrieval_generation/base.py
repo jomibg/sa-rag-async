@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Dict
 from openai import AsyncOpenAI
 
 
@@ -36,14 +36,30 @@ class RetrievalPipeline(ABC):
         )
         return resp.data[0].embedding
 
+    # ---------- template method ----------
+    async def _retrieve(self, query: str, top_k: int = 5) -> List[str]:
+        q_emb = await self._embed(query)
+        cypher = """
+            WITH $query_embedding AS query_embedding 
+            CALL db.index.vector.queryNodes('textEmbedding', 500, query_embedding) 
+            YIELD node AS c, score AS similarity
+            RETURN c.text AS text, similarity
+            ORDER BY similarity DESC
+            LIMIT $top_k
+        """
+        async with self.driver.session() as session:
+            result = await session.run(cypher, top_k=top_k, query_embedding=q_emb)
+            rows = [r["text"] async for r in result]
+        return rows
+
     # ---------- variant / abstract ----------
 
     @abstractmethod
-    async def _generate_answer(self, query: str, context: List[str]) -> str:
+    async def _generate_answer(self, query: str, context: List[str]) -> Dict[str, str]:
         """Produce the final answer. Implementation differs per pipeline."""
         raise NotImplementedError
 
     @abstractmethod 
-    async def run(self, query: str, top_k: int = 5) -> str:
+    async def run(self, query: str) -> Dict[str, str]:
         """The fixed algorithm skeleton shared by every pipeline."""
         raise NotImplementedError

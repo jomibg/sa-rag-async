@@ -2,18 +2,19 @@ from typing import List, Dict
 from neo4j import AsyncGraphDatabase
 from .base import RetrievalPipeline
 from .structured_outputs import ReasoningResponse, ModelResponse
+from .graph import GraphRetrievalMixin
 
-class VectorRetrievalPipeline(RetrievalPipeline):
-    """Baseline RAG: embed query, do a cosine-similarity search over chunk
-    embeddings stored in Neo4j, hand the top-k chunks to the LLM."""
+_CONTEXT_PREFIX_LEN = len("### Context \n")
 
-    def __init__(
-        self, neo4j_url, neo4j_user, neo4j_password,
+class SaPipelineCot(RetrievalPipeline, GraphRetrievalMixin):
+    def __init__(self, neo4j_url, neo4j_user, neo4j_password,
         llm_endpoint_url, llm_api_key, llm_model, embedding_model,
         answering_prompt, reasoning_enabled, reasoning_prompt, reasoning_steps,
-        retrieve_k
+        retrieve_k, 
+        # sa parameters
+        activating_descriptions, normalization_parameter, activation_threshold, pruning_threshold, k_hop
     ):
-        super().__init__(llm_endpoint_url, llm_api_key, llm_model, embedding_model)
+        super().__init__(llm_endpoint_url, llm_api_key, llm_model, embedding_model)  # ← ADD THIS
         self.driver = AsyncGraphDatabase.driver(
             neo4j_url, auth=(neo4j_user, neo4j_password),
             notifications_disabled_categories=["DEPRECATION"],
@@ -26,16 +27,21 @@ class VectorRetrievalPipeline(RetrievalPipeline):
             with open(reasoning_prompt, 'r') as f:
                 self.reasoning_prompt = f.read()
             self.reasoning_steps = reasoning_steps
+        self.activating_descriptions = activating_descriptions
+        self.normalization_parameter = normalization_parameter
+        self.activation_threshold = activation_threshold
+        self.pruning_threshold = pruning_threshold
+        self.k_hop = k_hop
 
-    async def _generate_answer(self, query: str, context: List[str]) -> Dict[str, str]:
-        context_text = "\n\n".join(context) if context else "No context found."
+
+    async def _generate_answer(self, query: str, context: str) -> Dict[str, str]:
 
         if self.reasoning_enabled:
-            context_text, _ = await self._apply_reasoning_steps(query, context_text, self.retrieve_k)
+            context, _ = await self._apply_reasoning_steps(query, context, self.retrieve_k)
 
         messages = [
             {"role": "system", "content": self.answering_prompt},
-            {"role": "user", "content": f"Context:\n{context_text}\n\nQuestion: {query}"},
+            {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query}"},
         ]
         resp = await self.client.beta.chat.completions.parse(
             model=self.llm_model, messages=messages, response_format=ModelResponse
@@ -47,6 +53,7 @@ class VectorRetrievalPipeline(RetrievalPipeline):
             'knowledge': context
         }
 
+
     async def _apply_reasoning_steps(self, query: str, context: str, top_k: int) -> tuple:
         reasoning_response = None
 
@@ -55,7 +62,6 @@ class VectorRetrievalPipeline(RetrievalPipeline):
                 {"role": "system", "content": self.reasoning_prompt},
                 {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query}"},
             ]
-
             resp = await self.client.beta.chat.completions.parse(
                     model=self.llm_model,
                     messages=messages,
@@ -65,19 +71,29 @@ class VectorRetrievalPipeline(RetrievalPipeline):
             # If answer is possible with current context, stop reasoning
             if reasoning_response.answer_possible:
                 break
-            # Refine context with follow-up question
             summarized_context = reasoning_response.provided_context
-            follow_up_question = reasoning_response.additional_question
-            if follow_up_question:
-                additional_documents = await self._retrieve(follow_up_question, self.retrieve_k)
-            else:
-                additional_documents = []
-            additional_context = '\n\n'.join(additional_documents)
-            context = f"{additional_context}\n\n{summarized_context}"
+            additional_question = reasoning_response.additional_question
+            query_embedding = await self._embed(additional_question)
+            new_context = await self._knowledge_acquisition_step(
+                query_embedding,
+                self.retrieve_k,
+                self.activating_descriptions,
+                self.activation_threshold,
+                self.pruning_threshold
+            )
+            context = (f"# Known information\n{summarized_context}\n"
+                       f"# Additional facts{new_context[_CONTEXT_PREFIX_LEN:]}")
 
         return context, reasoning_response
 
     async def run(self, query: str) -> Dict[str, str]:
         """The fixed algorithm skeleton shared by every pipeline."""
-        context = await self._retrieve(query, top_k=self.retrieve_k)
+        query_embedding = await self._embed(query)
+        context = await self._knowledge_acquisition_step(
+                query_embedding,
+                self.retrieve_k,
+                self.activating_descriptions,
+                self.activation_threshold,
+                self.pruning_threshold
+            )
         return await self._generate_answer(query, context)

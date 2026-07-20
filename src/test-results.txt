@@ -1,1 +1,39 @@
-59 - 66 seconds
+QUERY: 
+ Where does the founder of Les Films Du Losange work at?
+QUERY: 
+ Are director of film Susanna Whipped Cream and director of film Le Salamandre both from the same country?
+Initial context:
+### Context 
+Le salamandre is a 1969 Italian film directed by Alberto Cavallone. It gained a great commercial success and launched the brief careers of the two main actresses, Erna Schürer and Beryl Cunningham.
+
+Susanna Whipped Cream is a 1957 Italian- Spanish romantic comedy film directed by Steno.
+
+Luc Besson( born 18 March 1959) is a French film director, screenwriter, and producer. He directed or produced the films" Subway"( 1985)," The Big Blue"( 1988), and" Nikita"( 1990). Besson is associated with the" Cinéma du look" film movement. He has been nominated for a César Award for Best Director and Best Picture for his films and. He won Best Director and Best French Director for his sci-fi action film" The Fifth Element"( 1997). He wrote and directed the 2014 sci-fi action film" Lucy" and the 2017 space opera film" Valerian and the City of a Thousand Planets". In 1980, he founded his own production company, Les Films du Loup, and, later, Les Films du Dauphin, which were superseded in 2000 by his co-founding EuropaCorp film company with his longtime collaborator,. As writer, director, or producer, Besson has so far been involved in the creation of more than 50 films.
+**Key relationships**
+Steno directed Susanna Whipped Cream
+..............Reasoning step 0..............
+
+Initial context:
+### Context 
+Les films du losange is a film production company founded by Barbet Schroeder and Éric Rohmer in 1962. The company funds and distributes many films from the French nouvelle vague era, directed by Rohmer, Schroeder, Roger Planchon, Jacques Rivette, and later on Michael Haneke and Jacques Doillon.
+**Key relationships**
+
+..............Reasoning step 0..............
+
+###### NEW CONTEXT ##############
+# Known information
+Les films du losange is a film production company founded by Barbet Schroeder and Éric Rohmer in 1962. The company funds and distributes many films from the French nouvelle vague era, directed by Rohmer, Schroeder, Roger Planchon, Jacques Rivette, and later on Michael Haneke and Jacques Doillon.
+# Additional facts
+**Key relationships**
+
+..............Reasoning step 1..............
+
+###### NEW CONTEXT ##############
+# Known information
+Les films du losange is a film production company founded by Barbet Schroeder and Éric Rohmer in 1962. The company funds and distributes many films from the French nouvelle vague era, directed by Rohmer, Schroeder, Roger Planchon, Jacques Rivette, and later on Michael Haneke and Jacques Doillon.
+# Additional factsJohn De Margheriti( born July 1962) is an Italian- born Australian electrical engineer, software developer and entrepreneur. De Margheriti is widely seen as a founding' father' of Australia's video games industry and Australia's most experienced interactive entertainment business executive. He is the founder and former CEO of BigWorld Pty Limited and the founder of parent company Micro Forté Pty Limited. De Margheriti is also the Executive Chairman of the Academy of Interactive Entertainment, the Chairman of Canberra Technology Park, the founder of the Game Developers' Association of Australia, the founder of the Australian Game Developers Conference, and the founder of the three Canberra business parks, the co-founder of DEMS Entertainment, the co-founder of Dreamgate Studios, the co-founder of Game Plus and co-founder of The Film Distillery De Margheriti has been recognised as an Honorary Ambassador for Canberra due to his contribution to Australia's national capital.
+**Key relationships**
+
+Where does the founder of Les Films Du Losange work at? -> Insufficient Information
+Are director of film Susanna Whipped Cream and director of film Le Salamandre both from the same country? -> Insufficient Information
+Script finished in 16.0383 seconds
