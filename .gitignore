@@ -10,7 +10,7 @@ wheels/
 .venv
 # Ignore all JSON files in src/results and src/dataset (and subdirectories)
 src/results/**/*.json
-src/result/**/*.html
+src/results/**/*.html
 src/dataset/*.json
 src/dataset/**/*.json
 
