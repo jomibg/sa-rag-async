@@ -21,10 +21,12 @@ class RetrievalPipeline(ABC):
         llm_api_key: str,
         llm_model: str,
         embedding_model: str = "bge-large:latest",
+        name: str = "rag_pipeline"
     ):
         self.client = AsyncOpenAI(api_key=llm_api_key, base_url=llm_endpoint_url)
         self.llm_model = llm_model
         self.embedding_model = embedding_model
+        self.name = name
 
     # ---------- shared / invariant ----------
 

@@ -4,7 +4,7 @@ from pathlib import Path
 from utils import load_json_file, save_json_file
 
 from ingestion import run_ingestion
-from dataset_adapters import MusiqueQAAdapter, TwoWikiMultihopAdapter
+from dataset_adapters import load_corpus
 from retrieval_generation import (
     VectorRetrievalPipeline,
     retrieve_generate,
@@ -13,35 +13,27 @@ from retrieval_generation import (
     SaPipelineDecomp
     )
 from evaluation import execute_evaluation, generate_metrics_dashboard
-
-LLM_ENDPOINT = "http://localhost:11434/v1"
-LLM_API_KEY = "not-needed" 
-NEO4J_URL = "bolt://3.86.183.59"
-NEO4J_USER = "neo4j"
-NEO4J_PW = "nod-bail-bins"
-LLM_MODEL = "phi4-mini:latest"
-EMBEDDING_MODEL = "bge-large:latest"
-
-NER_PROMPT = "./prompts/ner.txt"
-RE_PROMPT = "./prompts/re.txt"
-REASONING_PROMPT = "./prompts/reasoning_decomposition.txt"
-ANSWERING_PROMPT = "./prompts/answering.txt"
+from .configs import RunConfigs
 
 #TODO: coordination and configs
-#TODO: Docker
+#TODO: Docker   
 
 async def amain():
-   
-    adapter = TwoWikiMultihopAdapter(
-        embedding_model="bge-large:latest",
-        embedding_endpoint_url=LLM_ENDPOINT,
-        embedding_api_key="not-needed",
-        dataset_path="./datasets/2wikimultihop_dev.json",
-    )
-    # Start small; raise `limit` once you confirm the pipeline works.
-    corpus_list, qa_pairs = await adapter.aload_corpus(
-        limit=2, #load_golden_context=True
-    )
+    configs = RunConfigs()
+
+    # load question and knowledge corpus
+    if configs.sample_data:
+        corpus_list, qa_pairs = await load_corpus(
+            adapter_name=configs.benchmark,
+            embedding_model=configs.embedding_model,
+            embedding_endpoint_url=configs.llm_enpoint,
+            embedding_api_key=configs.llm_api_key,
+            dataset_path=configs.dataset_path,
+            limit=configs.number_of_questions,
+        )
+        save_json_file("./results/corpus/2wiki_corpus_test.json", corpus_list)
+        save_json_file("./results/questions/2wiki_qa_test.json", qa_pairs)
+
     '''
     await run_ingestion(
         corpus_list,
@@ -141,7 +133,7 @@ async def amain():
     save_json_file("./results/answers/2wiki_answers_test.json", answers)
 
     produced_answers = [a["answer"] if not isinstance(a, Exception) else "" for a in answers]
-    golden_answers = [qa["answer"] for qa in qa_pairs]
+    
     results = await execute_evaluation(questions, produced_answers,
         golden_answers, evaluator_metrics=["EM", "f1"],)
     save_json_file("./results/evaluation/metrics/test.json", results)

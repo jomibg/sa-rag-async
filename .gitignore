@@ -10,6 +10,8 @@ wheels/
 .venv
 # Ignore all JSON files in src/results and src/dataset (and subdirectories)
 src/results/**/*.json
+src/result/**/*.json
+src/dataset/*.json
 src/dataset/**/*.json
 
 # Force-keep the placeholder files (optional, since .gitkeep isn't matched above)
