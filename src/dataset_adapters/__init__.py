@@ -1,10 +1,11 @@
+from typing import Optional
 from .musique_adapter import MusiqueQAAdapter
 from .twowikimh_adapter import TwoWikiMultihopAdapter
 
 VALID_ADAPTERS = {
-		'TwoWikiMultiHop':TwoWikiMultihopAdapter,
- 		'MuSiQuE':MusiqueQAAdapter
- 		}
+    "TwoWikiMultiHop": TwoWikiMultihopAdapter,
+    "MuSiQuE": MusiqueQAAdapter,
+}
 
 async def load_corpus(
     adapter_name: str,
@@ -23,7 +24,6 @@ async def load_corpus(
         dataset_path=dataset_path,
     )
     return await adapter.aload_corpus(limit=limit)
-	
-	
-	
+
+
 __all__ = ["MusiqueQAAdapter", "TwoWikiMultihopAdapter", "load_corpus"]

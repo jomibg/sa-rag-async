@@ -13,23 +13,33 @@ from retrieval_generation import (
     SaPipelineDecomp
     )
 from evaluation import execute_evaluation, generate_metrics_dashboard
-from .configs import RunConfigs
+from configs import RunConfigs
 
 #TODO: coordination and configs
 #TODO: Docker   
 
+LLM_ENDPOINT = "http://localhost:11434/v1"
+LLM_API_KEY = "not-needed"
+LLM_MODEL = "phi4-mini:latest"
+EMBEDDING_MODEL = "bge-large:latest"
+NEO4J_URL = "bolt://3.86.183.59"
+NEO4J_USER = "neo4j"
+NEO4J_PW = "nod-bail-bins"
+ANSWERING_PROMPT="./prompts/answering.txt"
+REASONING_PROMPT="./prompts/reasoning_cot.txt"
+
 async def amain():
-    configs = RunConfigs()
+    cfg = RunConfigs()
 
     # load question and knowledge corpus
-    if configs.sample_data:
+    if cfg.sample_data:
         corpus_list, qa_pairs = await load_corpus(
-            adapter_name=configs.benchmark,
-            embedding_model=configs.embedding_model,
-            embedding_endpoint_url=configs.llm_enpoint,
-            embedding_api_key=configs.llm_api_key,
-            dataset_path=configs.dataset_path,
-            limit=configs.number_of_questions,
+            adapter_name=cfg.benchmark,
+            embedding_model=cfg.embedding_model,
+            embedding_endpoint_url=cfg.llm_endpoint,
+            embedding_api_key=cfg.llm_api_key,
+            dataset_path=cfg.dataset_path,
+            limit=cfg.number_of_questions,
         )
         save_json_file("./results/corpus/2wiki_corpus_test.json", corpus_list)
         save_json_file("./results/questions/2wiki_qa_test.json", qa_pairs)
@@ -133,7 +143,7 @@ async def amain():
     save_json_file("./results/answers/2wiki_answers_test.json", answers)
 
     produced_answers = [a["answer"] if not isinstance(a, Exception) else "" for a in answers]
-    
+
     results = await execute_evaluation(questions, produced_answers,
         golden_answers, evaluator_metrics=["EM", "f1"],)
     save_json_file("./results/evaluation/metrics/test.json", results)
