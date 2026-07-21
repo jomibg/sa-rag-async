@@ -7,13 +7,13 @@ class DecompositionPipeline(RetrievalPipeline):
     """Decomposition RAG: pipeline that decomposes complex questions and answers iteratively."""
 
     def __init__(
-        self, neo4j_url, neo4j_user, neo4j_password,
+        self, name, neo4j_url, neo4j_user, neo4j_password,
         llm_endpoint_url, llm_api_key, llm_model, embedding_model,
         answering_prompt, reasoning_prompt,
         retrieve_k
 
     ):
-        super().__init__(llm_endpoint_url, llm_api_key, llm_model, embedding_model)
+        super().__init__(llm_endpoint_url, llm_api_key, llm_model, embedding_model, name)
         self.driver = AsyncGraphDatabase.driver(
             neo4j_url, auth=(neo4j_user, neo4j_password),
             notifications_disabled_categories=["DEPRECATION"],
@@ -22,7 +22,7 @@ class DecompositionPipeline(RetrievalPipeline):
         with open(answering_prompt, 'r') as f:
             self.answering_prompt = f.read()
         with open(reasoning_prompt, 'r') as f:
-        	self.reasoning_prompt = f.read()
+            self.reasoning_prompt = f.read()
 
     async def _decompose_question(self, query: str) -> List[str]:
         """Decompose a complex question into subquestions.
@@ -54,7 +54,7 @@ class DecompositionPipeline(RetrievalPipeline):
 
         Args:
             subquestion: The subquestion to answer.
-            memory: List of previous question-answer pairs. 
+            memory: List of previous question-answer pairs.
             retrieve_k: Number of documents to retrieve.
 
         Returns:
@@ -71,9 +71,9 @@ class DecompositionPipeline(RetrievalPipeline):
             full_context = context
 
         messages = [
-    		{"role": "system", "content": self.answering_prompt},
-    		{"role": "user", "content": f"{full_context}\n\nQuestion: {subquestion}"},
-		]
+            {"role": "system", "content": self.answering_prompt},
+            {"role": "user", "content": f"{full_context}\n\nQuestion: {subquestion}"},
+        ]
 
         result = await self.client.beta.chat.completions.parse(
             model=self.llm_model,
@@ -85,7 +85,7 @@ class DecompositionPipeline(RetrievalPipeline):
         return f"Sub-question:  {subquestion}\nAnswer:  {parsed.final_answer}"
 
     async def _generate_answer(self, query: str, sub_questions: List[str]) -> Dict[str, str]:
-        """Generate final answer from subquestions. 
+        """Generate final answer from subquestions.
 
         Args:
             original_question: The original question.
@@ -109,9 +109,9 @@ class DecompositionPipeline(RetrievalPipeline):
         context = '\n\n'.join(memory) + '\n\n' + '\n\n'.join(documents)
         # Generate final answer
         messages = [
-    		{"role": "system", "content": self.answering_prompt},
-    		{"role": "user", "content": f"{context}\n\nQuestion: {query}"},
-		]
+            {"role": "system", "content": self.answering_prompt},
+            {"role": "user", "content": f"{context}\n\nQuestion: {query}"},
+        ]
         result = await self.client.beta.chat.completions.parse(
             model=self.llm_model,
             messages=messages,
@@ -125,5 +125,5 @@ class DecompositionPipeline(RetrievalPipeline):
         }
 
     async def run(self, query: str) -> Dict[str, str]:
-    	sub_queries = await self._decompose_question(query)
-    	return await self._generate_answer(query, sub_queries)
+        sub_queries = await self._decompose_question(query)
+        return await self._generate_answer(query, sub_queries)

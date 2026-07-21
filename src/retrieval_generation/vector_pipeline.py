@@ -8,12 +8,12 @@ class VectorRetrievalPipeline(RetrievalPipeline):
     embeddings stored in Neo4j, hand the top-k chunks to the LLM."""
 
     def __init__(
-        self, neo4j_url, neo4j_user, neo4j_password,
+        self, name,neo4j_url, neo4j_user, neo4j_password,
         llm_endpoint_url, llm_api_key, llm_model, embedding_model,
         answering_prompt, reasoning_enabled, reasoning_prompt, reasoning_steps,
         retrieve_k
     ):
-        super().__init__(llm_endpoint_url, llm_api_key, llm_model, embedding_model)
+        super().__init__(llm_endpoint_url, llm_api_key, llm_model, embedding_model, name)
         self.driver = AsyncGraphDatabase.driver(
             neo4j_url, auth=(neo4j_user, neo4j_password),
             notifications_disabled_categories=["DEPRECATION"],

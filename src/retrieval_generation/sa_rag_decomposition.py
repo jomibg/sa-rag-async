@@ -6,13 +6,13 @@ from .graph import GraphRetrievalMixin
 
 class SaPipelineDecomp(RetrievalPipeline, GraphRetrievalMixin):
 
-    def __init__(self, neo4j_url, neo4j_user, neo4j_password,
+    def __init__(self, name, neo4j_url, neo4j_user, neo4j_password,
         llm_endpoint_url, llm_api_key, llm_model, embedding_model,
         answering_prompt, reasoning_prompt, retrieve_k, 
         # sa parameters
         activating_descriptions, normalization_parameter, activation_threshold, pruning_threshold, k_hop
     ):
-        super().__init__(llm_endpoint_url, llm_api_key, llm_model, embedding_model)  # ← ADD THIS
+        super().__init__(llm_endpoint_url, llm_api_key, llm_model, embedding_model, name)
         self.driver = AsyncGraphDatabase.driver(
             neo4j_url, auth=(neo4j_user, neo4j_password),
             notifications_disabled_categories=["DEPRECATION"],
