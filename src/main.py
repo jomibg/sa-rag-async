@@ -1,17 +1,18 @@
 import asyncio
 import time
 from pathlib import Path
+from utils import load_json_file, save_json_file
 
-from ingestion.kg_ingestion import AdvancedKGIngestor
-from dataset_adapters.musique_adapter import MusiqueQAAdapter
-from dataset_adapters.twowikimh_adapter import TwoWikiMultihopAdapter
+from ingestion import run_ingestion
+from dataset_adapters import MusiqueQAAdapter, TwoWikiMultihopAdapter
 from retrieval_generation import (
     VectorRetrievalPipeline,
     retrieve_generate,
     DecompositionPipeline,
-    SaPipelineCot
+    SaPipelineCot,
+    SaPipelineDecomp
     )
-from evaluation.evaluation import execute_evaluation
+from evaluation import execute_evaluation, generate_metrics_dashboard
 
 LLM_ENDPOINT = "http://localhost:11434/v1"
 LLM_API_KEY = "not-needed" 
@@ -26,14 +27,8 @@ RE_PROMPT = "./prompts/re.txt"
 REASONING_PROMPT = "./prompts/reasoning_decomposition.txt"
 ANSWERING_PROMPT = "./prompts/answering.txt"
 
-
-#TODO: implement other hybrid RAG pipeine
-#TODO: add knowledge and reasoning in pipeline responses
-#TODO: review evaluation pipeline
-#TODO: add result records 
 #TODO: coordination and configs
 #TODO: Docker
-#TODO: __init__ imports
 
 async def amain():
    
@@ -48,7 +43,8 @@ async def amain():
         limit=2, #load_golden_context=True
     )
     '''
-    ingestion_pipeline = AdvancedKGIngestor(
+    await run_ingestion(
+        corpus_list,
         neo4j_url=NEO4J_URL,
         neo4j_user=NEO4J_USER,
         neo4j_password=NEO4J_PW,
@@ -58,12 +54,13 @@ async def amain():
         llm_api_key=LLM_API_KEY,
         template_re_loc=RE_PROMPT,
         template_ner_loc=NER_PROMPT,
-        embedding_model=EMBEDDING_MODEL
+        embedding_model=EMBEDDING_MODEL,
+        concurrency=3,
     )
 
-    # Tune `concurrency` to the capacity of your Ollama/model server.
-    # Start low (2-4) and raise it while watching GPU/CPU utilization.
-    await ingestion_pipeline.ingest(corpus_list, concurrency=3)
+    save_json_file("./results/corpus/2wiki_corpus_test.json", corpus_list)
+    save_json_file("./results/questions/2wiki_qa_test.json", qa_pairs)
+    
     vector_pipeline = VectorRetrievalPipeline(
         neo4j_url=NEO4J_URL,
         neo4j_user=NEO4J_USER,
@@ -97,9 +94,8 @@ async def amain():
         activation_threshold=0.5,
         pruning_threshold=0.45,
         k_hop = 3
-
         )
-    '''
+    
     decomp_pipeline = DecompositionPipeline(
         neo4j_url=NEO4J_URL,
         neo4j_user=NEO4J_USER,
@@ -112,27 +108,45 @@ async def amain():
         reasoning_prompt=REASONING_PROMPT,
         retrieve_k=5
         )
+
+    '''
+    sa_decomp_pipeline = SaPipelineDecomp(
+        neo4j_url=NEO4J_URL,
+        neo4j_user=NEO4J_USER,
+        neo4j_password=NEO4J_PW,
+        llm_endpoint_url=LLM_ENDPOINT,
+        llm_api_key=LLM_API_KEY,
+        llm_model=LLM_MODEL,
+        embedding_model=EMBEDDING_MODEL,
+        answering_prompt=ANSWERING_PROMPT,
+        reasoning_prompt=REASONING_PROMPT,
+        retrieve_k=5,
+        activating_descriptions=3,
+        normalization_parameter=0.4,
+        activation_threshold=0.5,
+        pruning_threshold=0.45,
+        k_hop = 3
+        )
+
     questions = [item["question"] for item in qa_pairs]
     golden_answers = [item["answer"] for item in qa_pairs]
 
     answers = await retrieve_generate(
-        pipeline=decomp_pipeline, 
+        pipeline=sa_decomp_pipeline, 
         questions=questions,
         max_concurrency=3, 
         show_progress=False,
         return_exceptions=True,
     )
+    save_json_file("./results/answers/2wiki_answers_test.json", answers)
 
     produced_answers = [a["answer"] if not isinstance(a, Exception) else "" for a in answers]
     golden_answers = [qa["answer"] for qa in qa_pairs]
     results = await execute_evaluation(questions, produced_answers,
         golden_answers, evaluator_metrics=["EM", "f1"],)
-    for r in results:
-        print(r["question"])
-        print("  produced :", r["answer"])
-        print("  golden   :", r["golden_answer"])
-        print("  metrics  :", r["metrics"])
-
+    save_json_file("./results/evaluation/metrics/test.json", results)
+    generate_metrics_dashboard("./results/evaluation/metrics/test.json",
+        "./results/evaluation/dashboards/test.html", "2wikimh")
 
 if __name__ == "__main__":
     start_time = time.perf_counter()

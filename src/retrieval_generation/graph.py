@@ -162,7 +162,7 @@ class GraphRetrievalMixin:
             A list of text strings containing entity descriptions.
         """
         query = """
-            MATCH (e:Entity)<-[:DESCRIBES]-(d: Document)
+            MATCH (e:Entity)<-[:DESCRIBES]-(d:Document)
             WHERE e.name IN $entity_names
             WITH DISTINCT d, gds.similarity.cosine(d.embedding, $query_embedding) AS similarity
             WHERE similarity >= $threshold
