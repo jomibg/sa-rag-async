@@ -16,17 +16,17 @@ EMBEDDING_MODEL = "bge-large:latest"
 NEO4J_URL = "bolt://3.86.183.59"
 NEO4J_USER = "neo4j"
 NEO4J_PW = "nod-bail-bins"
-ANSWERING_PROMPT="./prompts/answering.txt"
-REASONING_PROMPT_COT="./prompts/reasoning_cot.txt"
-REASONING_PROMPT_DECOMP="./prompts/reasoning_decomposition.txt"
+ANSWERING_PROMPT="../prompts/answering.txt"
+REASONING_PROMPT_COT="../prompts/reasoning_cot.txt"
+REASONING_PROMPT_DECOMP="../prompts/reasoning_decomposition.txt"
 
 @dataclass
 class RunConfigs:
     # GENERAL
-    sample_data: bool = True
+    sample_data: bool = False
     number_of_questions: int = 2
     benchmark: str = "MuSiQuE"  # 'TwoWikiMultiHop', 'MuSiQuE'
-    ingest_corpus: bool = True          # was: ingest_cropus (typo)
+    ingest_corpus: bool = False          # was: ingest_cropus (typo)
     answering_questions: bool = True
     show_progress_answering: bool = True
     evaluating_answers: bool = True 
@@ -48,12 +48,12 @@ class RunConfigs:
     dataset_path: str = None
     sample_corpus_path: str = None
     sample_qa_path: str = None
-    template_re_loc: str = "./prompts/re.txt"
-    template_ner_loc: str = "./prompts/ner.txt"
+    template_re_loc: str = "../prompts/re.txt"
+    template_ner_loc: str = "../prompts/ner.txt"
 
     def __post_init__(self):
         if self.dataset_path is None:
-            dir_path = "./datasets"
+            dir_path = "../datasets"
             if self.benchmark == "MuSiQuE":
                 self.dataset_path = os.path.join(dir_path, "musique_data.jsonl")
             elif self.benchmark == "TwoWikiMultiHop":
@@ -61,9 +61,9 @@ class RunConfigs:
             else:
                 raise ValueError(f"Unknown benchmark: {self.benchmark}")
         if self.sample_corpus_path is None:
-            self.sample_corpus_path = os.path.join("./results/corpus", f"{self.benchmark}_corpus_{self.number_of_questions}.json")
+            self.sample_corpus_path = os.path.join("../results/corpus", f"{self.benchmark}_corpus_{self.number_of_questions}.json")
         if self.sample_qa_path is None:
-            self.sample_qa_path = os.path.join("./results/questions", f"{self.benchmark}_qa_{self.number_of_questions}.json")
+            self.sample_qa_path = os.path.join("../results/questions", f"{self.benchmark}_qa_{self.number_of_questions}.json")
         
 
 RAG_PIPELINES = [

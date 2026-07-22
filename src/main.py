@@ -15,8 +15,8 @@ from retrieval_generation import (
 from evaluation import execute_evaluation, generate_metrics_dashboard
 from configs import RunConfigs, RAG_PIPELINES
 
-#TODO: coordination and configs
-#TODO: Docker   
+# TODO: Docker   (read on OpenCode)
+# TODO: docstrings
 
 async def amain():
     cfg = RunConfigs()
@@ -65,20 +65,20 @@ async def amain():
                 show_progress=cfg.show_progress_answering,
                 return_exceptions=True,
             )
-            save_json_file(f"./results/answers/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.json", answers)
+            save_json_file(f"../results/answers/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.json", answers)
 
     if cfg.evaluating_answers:
         for pipeline in RAG_PIPELINES:
             qa_pairs = load_json_file(cfg.sample_qa_path)
             questions = [item["question"] for item in qa_pairs]
             golden_answers = [item["answer"] for item in qa_pairs]
-            answers = load_json_file(f"./results/answers/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.json")
+            answers = load_json_file(f"../results/answers/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.json")
             produced_answers = [a["answer"] if not isinstance(a, Exception) else "" for a in answers]
             results = await execute_evaluation(questions, produced_answers,
                 golden_answers, evaluator_metrics=["EM", "f1"],)
-            save_json_file(f"./results/evaluation/metrics/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.json", results)
-            generate_metrics_dashboard(f"./results/evaluation/metrics/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.json",
-                f"./results/evaluation/dashboards/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.html", "2wikimh")
+            save_json_file(f"../results/evaluation/metrics/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.json", results)
+            generate_metrics_dashboard(f"../results/evaluation/metrics/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.json",
+                f"../results/evaluation/dashboards/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.html", "2wikimh")
 
 if __name__ == "__main__":
     start_time = time.perf_counter()
