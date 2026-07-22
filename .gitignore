@@ -9,11 +9,11 @@ wheels/
 # Virtual environments
 .venv
 # Ignore all JSON files in src/results and src/dataset (and subdirectories)
-src/results/**/*.json
-src/results/**/*.html
-src/dataset/*.json
-src/dataset/**/*.json
+results/**/*.json
+results/**/*.html
+datasets/*.json
+datasets/**/*.json
 
 # Force-keep the placeholder files (optional, since .gitkeep isn't matched above)
-!src/results/**/.gitkeep
-!src/dataset/**/.gitkeep
+!results/**/.gitkeep
+!datasets/**/.gitkeep
