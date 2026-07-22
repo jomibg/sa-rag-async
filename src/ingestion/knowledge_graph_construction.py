@@ -3,6 +3,8 @@ from pydantic import BaseModel, RootModel, Field
 from openai import AsyncOpenAI
 
 class NEREntity(BaseModel):
+    """A named entity with type, aliases, and descriptive info."""
+
     name: str
     type: str
     aliases: List[str] = Field(default_factory=list)
@@ -10,12 +12,16 @@ class NEREntity(BaseModel):
 
 
 class NEREntityList(RootModel[List[NEREntity]]):
+    """Root model wrapping a list of NER entities."""
+
     pass
 
 
 Triple = Annotated[List[str], Field(min_length=3, max_length=3)]
 
 class RelationTriples(BaseModel):
+    """Structured LLM response containing relationship triplets."""
+
     triples: List[Triple]
 
 
@@ -24,12 +30,7 @@ struct_out_re = RelationTriples
 
 
 class AdvancedKGConstructor:
-    """Constructs a knowledge graph by extracting entities and relationships from text.
-
-    This class leverages language models and embedding pipelines to extract named entities and
-    relationship triplets from a given text, compute embeddings for the relations, remove duplicates
-    based on cosine similarity, and extract frequent relations based on occurrence counts.
-    """
+    """Extracts entities and relationship triplets from text to build a knowledge graph."""
 
     def __init__(self, template_ner_loc: str, template_re_loc: str, #embedding_pipeline: Any,
                  llm_endpoint_url: str,
@@ -37,21 +38,16 @@ class AdvancedKGConstructor:
                  ner_model: str = "qwen2.5:3b",
                  re_model: str = "hermes3",
                  embedding_model: str = "bge-large:latest"):
-        """Initializes the KnowledgeGraphConstructor.
-
-        Loads the templates for named entity recognition (NER) and relationship extraction (RE)
-        from the specified file locations. Also, sets up a client for interacting with a language
-        model server and stores the provided embedding pipeline and NER model.
+        """Initialize the constructor with NER/RE templates and model settings.
 
         Args:
-            template_ner_loc: The file path to the NER template.
-            template_re_loc: The file path to the RE template.
-            embedding_model: Name of embedding model for creating embeddings from textual data.
+            template_ner_loc: File path to the NER template.
+            template_re_loc: File path to the RE template.
             llm_endpoint_url: URL for the LLM API endpoint.
-            ner_model: The language model identifier to be used for NER.
-                Defaults to "qwen2.5:3b".
-            re_model: The language model identifier to be used for RE.
-                Defaults to "hermes3".
+            llm_api_key: API key for the LLM endpoint.
+            ner_model: Language model identifier for NER.
+            re_model: Language model identifier for RE.
+            embedding_model: Name of the embedding model.
         """
         self.client = AsyncOpenAI(api_key=llm_api_key, base_url=llm_endpoint_url)
         #self.embedding_pipeline = embedding_pipeline
@@ -65,8 +61,10 @@ class AdvancedKGConstructor:
 
 
     async def _embed(self, texts: List[str]) -> List[List[float]]:
-        """Batched async embedding call against Ollama's /v1/embeddings.
-        Returns an empty list when `texts` is empty so callers can zip safely."""
+        """Batched async embedding call via the OpenAI-compatible endpoint.
+
+        Returns an empty list when `texts` is empty so callers can zip safely.
+        """
         if not texts:
             return []
         resp = await self.client.embeddings.create(
@@ -78,16 +76,13 @@ class AdvancedKGConstructor:
 
 
     async def _extract_entities(self, text: str) -> List[Dict]:
-        """Extracts named entities from the given text using the NER template.
-
-        This method sends a prompt to the language model client with the NER template and the
-        provided text, and returns the model's response containing the extracted entities.
+        """Extract named entities from the text using the NER template.
 
         Args:
             text: The input text from which to extract entities.
 
         Returns:
-            A list of dictionaries representing the extracted entities with their properties.
+            List of NEREntity objects.
         """
         messages = [{"role": "system", "content": self.template_ner}, {"role": "user", "content": text}]
         result = await self.client.beta.chat.completions.parse(
@@ -101,21 +96,14 @@ class AdvancedKGConstructor:
 
 
     async def _extract_relationships(self, text: str, ner_list: str):
-        """Extracts relationships from the given text by leveraging NER and RE templates.
-
-        First, it appends the named entities to the text and sends the augmented text to the RE
-        template for relationship extraction. The response is validated against a JSON schema,
-        and only triplets with exactly three elements are considered. Finally, embeddings for
-        these triplets are created.
+        """Extract relationship triplets from text appended with named entities.
 
         Args:
             text: The input text from which to extract relationships.
-            ner_list: List of named entities as a string.
+            ner_list: Named entities appended to the text, as a string.
 
         Returns:
-            tuple: A tuple containing:
-                - A list of relationship triplets, where each triplet is a list of three strings.
-                - A list of embeddings corresponding to the triplets.
+            List of relationship triplets, each a list of three strings.
         """
         new_text = text + '\nnamed_entities: ' + ner_list
         messages = [{"role": "system", "content": self.template_re}, {"role": "user", "content": new_text}]
@@ -131,22 +119,14 @@ class AdvancedKGConstructor:
         return relations#, embeddings
 
     async def extract_entities_and_relationships(self, text: str):
-        """Extracts entities and relationships from the given text.
-
-        This method performs the full knowledge graph extraction pipeline:
-        1. Extract named entities from the text
-        2. Create embeddings for each entity
-        3. Extract relationships between entities
-        4. Create embeddings for each relationship
+        """Run the full extraction pipeline and compute embeddings for entities/relations.
 
         Args:
             text: The input text from which to extract entities and relationships.
 
         Returns:
-            tuple: A tuple containing:
-                - A list of entities with their embeddings
-                - A list of relationship triplets
-                - A list of embeddings for the relationships
+            Tuple of (entities, relationships, chunk_embedding,
+            entity_descriptor_embeddings, relation_embeddings).
         """
         entities = await self._extract_entities(text)
         entity_names = [e.name for e in entities]

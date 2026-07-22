@@ -5,20 +5,13 @@ from utils import load_json_file, save_json_file
 
 from ingestion import run_ingestion
 from dataset_adapters import load_corpus
-from retrieval_generation import (
-    VectorRetrievalPipeline,
-    retrieve_generate,
-    DecompositionPipeline,
-    SaPipelineCot,
-    SaPipelineDecomp
-    )
+from retrieval_generation import retrieve_generate
 from evaluation import execute_evaluation, generate_metrics_dashboard
 from configs import RunConfigs, RAG_PIPELINES
 
-# TODO: Docker   (read on OpenCode)
-# TODO: docstrings
 
 async def amain():
+    """Run the full pipeline: load corpus, ingest, answer, and evaluate."""
     cfg = RunConfigs()
 
     # load question and knowledge corpus

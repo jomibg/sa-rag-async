@@ -22,16 +22,9 @@ async def run_ingestion(
     overlap_size: int = 200,
     concurrency: int = 3,
 ) -> AdvancedKGIngestor:
-    """
-    Build an AdvancedKGIngestor from configuration and run the async
-    ingestion pipeline over `corpus_list`.
+    """Build an ingestor from config and run ingestion over `corpus_list`.
 
-    All async behavior is preserved: the producer / K-extractor / writer
-    pipeline inside `ingest`, the async Neo4j session writes, and the
-    driver cleanup at the end.
-
-    Returns the ingestor instance (driver already closed) so callers can
-    inspect configuration if needed.
+    Returns the ingestor instance (with driver already closed).
     """
     ingestion_pipeline = AdvancedKGIngestor(
         neo4j_url=neo4j_url,

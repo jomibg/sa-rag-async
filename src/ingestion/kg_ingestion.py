@@ -10,6 +10,8 @@ _SENTINEL = object()  # end-of-stream marker pushed into the queues
 
 
 class AdvancedKGIngestor:
+    """Orchestrates chunked corpus ingestion into a Neo4j knowledge graph."""
+
     def __init__(
         self,
         neo4j_url: str,
@@ -26,6 +28,7 @@ class AdvancedKGIngestor:
         llm_endpoint_url: str = "",
         llm_api_key: str = "",
     ):
+        """Initialize the ingestor with Neo4j driver and chunking configuration."""
         self.chunking_method = chunking_method
         self.chunk_size = chunk_size
         self.overlap_size = overlap_size
@@ -46,6 +49,7 @@ class AdvancedKGIngestor:
     # ---- Neo4j write helpers (run serially on one async session) ----
 
     async def create_entity_description(self, session, e_description, e_name, embedding):
+        """Create or update a Description node and link it to its Entity."""
         query = """
             MERGE (d:Description {text: $e_description})
             SET d.embedding = $e_embedding
@@ -60,6 +64,11 @@ class AdvancedKGIngestor:
         await result.consume()
 
     async def create_entity_node(self, session, e_name, e_type, e_aliases):
+        """Create an Entity node or merge aliases into an existing match.
+
+        Returns:
+            The canonical entity name, or None if creation was skipped.
+        """
         # Don't mutate the caller's list; build a fresh one.
         aliases = list(e_aliases) + [e_name]
         query = """
@@ -90,6 +99,7 @@ class AdvancedKGIngestor:
         return name
 
     async def create_relationship_entity_entity(self, session, h_name, t_name, rel_name, rel_embedding):
+        """Create a RELATED_TO relationship between two entities with its embedding."""
         query = """
             MATCH (e1:Entity {name: $h_name})
             WITH e1
@@ -103,6 +113,7 @@ class AdvancedKGIngestor:
         await result.consume()
 
     async def create_chunk_node(self, session, chunk, index, embedding):
+        """Create or update a Document chunk node with its embedding."""
         query = """
         MERGE (d:Document {doc_id: $doc_id, text: $text})
         SET d.embedding = $embedding
@@ -112,6 +123,7 @@ class AdvancedKGIngestor:
         await result.consume()
 
     async def connect_chunk_entity(self, session, chunk_id, entity_name):
+        """Link a Document chunk to an Entity via a DESCRIBES relationship."""
         query = """
         MATCH (d:Document {doc_id: $doc_id})
         WITH d
@@ -134,6 +146,7 @@ class AdvancedKGIngestor:
         desc_embeddings,
         rel_embeddings,
     ):
+        """Write one chunk and its entities/relationships to Neo4j."""
         await self.create_chunk_node(session, chunk, index, chunk_embedding)
         for e, e_emb in zip(entities, desc_embeddings):
             retrieved_name = await self.create_entity_node(
@@ -151,6 +164,7 @@ class AdvancedKGIngestor:
             )
 
     async def create_vector_index(self, session):
+        """Create the vector index on Document embeddings if it does not exist."""
         query = (
             "CREATE VECTOR INDEX textEmbedding IF NOT EXISTS "
             "FOR (n:Document) ON n.embedding"
@@ -160,6 +174,12 @@ class AdvancedKGIngestor:
 
     # ---- Async pipeline: producer / K extractors / 1 writer ----
     async def ingest(self, corpus_list: List[str], concurrency: int = 4):
+        """Ingest a corpus into the graph using a producer/extractor/writer pipeline.
+
+        Args:
+            corpus_list: List of document strings to ingest.
+            concurrency: Number of concurrent extraction workers.
+        """
         chunks = list(
             chunk_documents(
                 corpus_list,

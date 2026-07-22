@@ -1,0 +1,7 @@
+aiofiles>=24.1.0,<25.0.0
+neo4j>=5.25.0,<6.0.0
+numpy>=2.5.1
+openai>=2.14.0,<3.0.0
+plotly>=6.9.0
+python-dotenv>=1.0.1,<2.0.0
+tqdm>=4.68.4

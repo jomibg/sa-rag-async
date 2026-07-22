@@ -31,6 +31,7 @@ class TwoWikiMultihopAdapter:
         embedding_batch_size: int = 64,
         dedup_threshold: float = 0.99,
     ):
+        """Initialize the adapter with embedding endpoint and dedup settings."""
         self.client = AsyncOpenAI(
             api_key=embedding_api_key, base_url=embedding_endpoint_url
         )
@@ -41,6 +42,7 @@ class TwoWikiMultihopAdapter:
 
     # ---- Async batched embedding (Ollama /v1/embeddings) --------------
     async def _embed_batch(self, texts: List[str]) -> List[List[float]]:
+        """Embed a list of texts in a single API call, preserving input order."""
         if not texts:
             return []
         resp = await self.client.embeddings.create(
@@ -49,6 +51,7 @@ class TwoWikiMultihopAdapter:
         return [d.embedding for d in sorted(resp.data, key=lambda d: d.index)]
 
     async def _embed_all(self, texts: List[str]) -> List[np.ndarray]:
+        """Embed all texts in batches of `embedding_batch_size`."""
         out: List[np.ndarray] = []
         for i in range(0, len(texts), self.embedding_batch_size):
             batch = texts[i : i + self.embedding_batch_size]
@@ -58,6 +61,7 @@ class TwoWikiMultihopAdapter:
 
     # ---- Raw corpus loading (file preferred, async HTTP fallback) -----
     async def _get_raw_corpus(self) -> List[dict[str, Any]]:
+        """Load raw 2WikiMultihopQA corpus from file or download it."""
         if os.path.exists(self.dataset_path):
             with open(self.dataset_path, "r", encoding="utf-8") as f:
                 return json.load(f)
@@ -75,6 +79,11 @@ class TwoWikiMultihopAdapter:
 
     # ---- Corpus extraction with batched, in-memory cosine dedup --------
     async def _build_corpus(self, raw_corpus: List[dict[str, Any]]) -> List[str]:
+        """Build a deduplicated corpus from raw items via cosine-similarity.
+
+        Removes paragraphs with the same title whose embedding similarity
+        exceeds `dedup_threshold`.
+        """
         flat: List[Tuple[str, str]] = []
         for item in raw_corpus:
             for paragraph in item.get("context", []):
@@ -106,6 +115,7 @@ class TwoWikiMultihopAdapter:
         limit: Optional[int] = None,
         seed: int = 42,
     ) -> Tuple[List[str], List[dict[str, Any]]]:
+        """Load and return a (corpus, qa_pairs) tuple, optionally sampling `limit` items."""
         raw_corpus = await self._get_raw_corpus()
         if limit is not None and 0 < limit < len(raw_corpus):
             random.seed(seed)

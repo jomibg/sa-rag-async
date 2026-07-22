@@ -13,6 +13,7 @@ class VectorRetrievalPipeline(RetrievalPipeline):
         answering_prompt, reasoning_enabled, reasoning_prompt, reasoning_steps,
         retrieve_k
     ):
+        """Initialize the vector pipeline with Neo4j driver and prompts."""
         super().__init__(llm_endpoint_url, llm_api_key, llm_model, embedding_model, name)
         self.driver = AsyncGraphDatabase.driver(
             neo4j_url, auth=(neo4j_user, neo4j_password),
@@ -28,6 +29,15 @@ class VectorRetrievalPipeline(RetrievalPipeline):
             self.reasoning_steps = reasoning_steps
 
     async def _generate_answer(self, query: str, context: List[str]) -> Dict[str, str]:
+        """Generate an answer for the query using the retrieved context.
+
+        Args:
+            query: The user question.
+            context: List of retrieved context chunks.
+
+        Returns:
+            Dict with 'answer', 'reasoning', and 'knowledge' keys.
+        """
         context_text = "\n\n".join(context) if context else "No context found."
 
         if self.reasoning_enabled:
@@ -48,6 +58,16 @@ class VectorRetrievalPipeline(RetrievalPipeline):
         }
 
     async def _apply_reasoning_steps(self, query: str, context: str, top_k: int) -> tuple:
+        """Iteratively refine context with follow-up retrievals until answerable.
+
+        Args:
+            query: The user question.
+            context: Current context string.
+            top_k: Number of documents to retrieve per follow-up.
+
+        Returns:
+            Tuple of (refined_context, final_reasoning_response).
+        """
         reasoning_response = None
 
         for step in range(self.reasoning_steps):
@@ -78,6 +98,6 @@ class VectorRetrievalPipeline(RetrievalPipeline):
         return context, reasoning_response
 
     async def run(self, query: str) -> Dict[str, str]:
-        """The fixed algorithm skeleton shared by every pipeline."""
+        """Retrieve context and generate an answer for the query."""
         context = await self._retrieve(query, top_k=self.retrieve_k)
         return await self._generate_answer(query, context)

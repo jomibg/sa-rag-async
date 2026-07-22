@@ -15,6 +15,10 @@ async def load_corpus(
     dataset_path: str,
     limit: Optional[int] = None,
 ):
+    """Load a corpus and QA pairs via the named adapter.
+
+    Returns a tuple of (corpus_list, question_answer_pairs).
+    """
     if adapter_name not in VALID_ADAPTERS:
         raise ValueError(f"Not a valid adapter name: {adapter_name}")
     adapter = VALID_ADAPTERS[adapter_name](

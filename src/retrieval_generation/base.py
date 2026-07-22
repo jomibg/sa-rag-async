@@ -6,13 +6,8 @@ from openai import AsyncOpenAI
 class RetrievalPipeline(ABC):
     """Abstract base for retrieval-generation pipelines (Template Method).
 
-    Invariant behaviour lives here:
-        * `self.client`        — OpenAI-compatible async client
-        * `_embed(text)`       — single-string embedding helper
-
-    Variant behaviour is delegated to subclasses via the abstract method
-    `generate_answer`. A concrete `run()` method defines the overall
-    algorithm skeleton:  embed  ->  retrieve  ->  generate.
+    Provides shared embedding/retrieval helpers and defines the
+    embed -> retrieve -> generate skeleton via abstract methods.
     """
 
     def __init__(
@@ -23,6 +18,7 @@ class RetrievalPipeline(ABC):
         embedding_model: str = "bge-large:latest",
         name: str = "rag_pipeline"
     ):
+        """Initialize the async OpenAI-compatible client and model names."""
         self.client = AsyncOpenAI(api_key=llm_api_key, base_url=llm_endpoint_url)
         self.llm_model = llm_model
         self.embedding_model = embedding_model
@@ -31,7 +27,7 @@ class RetrievalPipeline(ABC):
     # ---------- shared / invariant ----------
 
     async def _embed(self, text: str) -> List[float]:
-        """Embed a single string using the OpenAI-compatible /v1/embeddings endpoint."""
+        """Embed a single string via the OpenAI-compatible embeddings endpoint."""
         resp = await self.client.embeddings.create(
             model=self.embedding_model,
             input=[text],            # NOTE: single string, wrapped in a list
@@ -40,6 +36,15 @@ class RetrievalPipeline(ABC):
 
     # ---------- template method ----------
     async def _retrieve(self, query: str, top_k: int = 5) -> List[str]:
+        """Retrieve the top-k chunk texts for a query via vector similarity.
+
+        Args:
+            query: The query string.
+            top_k: Number of chunks to retrieve.
+
+        Returns:
+            List of retrieved chunk text strings.
+        """
         q_emb = await self._embed(query)
         cypher = """
             WITH $query_embedding AS query_embedding 

@@ -4,6 +4,10 @@ import plotly.graph_objects as go
 
 
 def generate_metrics_dashboard(json_data, output_file, benchmark=""):
+    """Generate an HTML dashboard of evaluation metrics from a JSON results file.
+
+    Writes the dashboard to `output_file` and returns that file path.
+    """
     try:
         with open(json_data, "r", encoding="utf-8") as f:
             data = json.load(f)

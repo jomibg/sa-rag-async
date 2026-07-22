@@ -5,11 +5,19 @@ from evaluation.test_case import TestCase
 
 
 class F1ScoreMetric:
+    """Token-level F1 evaluation metric."""
+
     def __init__(self):
+        """Initialize the metric with no score or reason."""
         self.score = None
         self.reason = None
 
     def measure(self, test_case: TestCase) -> float:
+        """Compute token-level F1 score between actual and expected output.
+
+        Returns:
+            The F1 score in [0.0, 1.0].
+        """
         actual = (test_case.actual_output or "").lower()
         expected = (test_case.expected_output or "").lower()
 

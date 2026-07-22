@@ -2,8 +2,7 @@ from typing import List, Generator, Tuple
 
 
 def size_based_chunking(text: str, chunk_size: int, overlap_size: int) -> Generator[str, None, None]:
-    """Yield fixed-size character windows from `text` with `overlap_size` characters
-    of overlap between consecutive windows.
+    """Yield fixed-size character windows with overlap between consecutive windows.
 
     A window of length `chunk_size` is taken, then the start index advances by
     `chunk_size - overlap_size`. The last window may be shorter than `chunk_size`.
@@ -28,6 +27,11 @@ def size_based_chunking(text: str, chunk_size: int, overlap_size: int) -> Genera
 
 
 def word_based_chunking(text: str, chunk_size: int, overlap_size: int) -> Generator[str, None, None]:
+    """Yield word-count windows with overlap between consecutive windows.
+
+    Each chunk contains `chunk_size` words; the start index advances by
+    `chunk_size - overlap_size`. The last chunk may be shorter.
+    """
     if chunk_size <= 0:
         raise ValueError("chunk_size must be positive.")
     if overlap_size < 0:
@@ -54,9 +58,16 @@ def chunk_documents(
         chunk_size: int,
         overlap_size: int
 ) -> Generator[Tuple[int, str], None, None]:
-    """
-    Chunk each document in `docs` according to the specified method (`size_based` or `word_based`).
-    Yields tuples of the form (doc_index, chunk_text).
+    """Chunk each document according to the specified method.
+
+    Args:
+        docs: List of document strings.
+        chunk_method: Either "size_based" or "word_based".
+        chunk_size: Size of each chunk.
+        overlap_size: Overlap between consecutive chunks.
+
+    Yields:
+        Tuples of (chunk_index, chunk_text).
     """
     chunk_index=0
     for i, doc in enumerate(docs):

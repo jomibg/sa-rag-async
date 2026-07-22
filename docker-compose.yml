@@ -45,22 +45,20 @@ services:
               count: all  # Use all available GPUs, or specify count: 1
               capabilities: [gpu]
     environment:
-      NEO4J_URL: "bolt://neo4j:7687"
-      NEO4J_NEW_URL: "bolt://neo4j_new:7687"
+      NEO4J_URL: "bolt://neo4j_db1:7687"
+      NEO4J_NEW_URL: "bolt://neo4j_db2:7687"
       NEO4J_USER: "neo4j"
       NEO4J_PASSWORD: "test1234"
       NEO4J_server_config_strict__validation_enabled: "false"
-      LLM_BASE_URL: "https://inference.baseten.co/v1"
+      LLM_BASE_URL: "http://172.17.0.1:11434/v1"
       LLM_API_KEY: "not-needed"
     depends_on:
-      neo4j:
+      neo4j_db1:
         condition: service_healthy
-      neo4j_new:
+      neo4j_db2:
         condition: service_healthy
     ports:
       - "8000:8000"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     volumes:
       - ./src:/app/src
       - ./prompts:/app/prompts

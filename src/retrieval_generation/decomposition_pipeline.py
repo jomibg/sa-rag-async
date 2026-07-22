@@ -13,6 +13,7 @@ class DecompositionPipeline(RetrievalPipeline):
         retrieve_k
 
     ):
+        """Initialize the decomposition pipeline with Neo4j driver and prompts."""
         super().__init__(llm_endpoint_url, llm_api_key, llm_model, embedding_model, name)
         self.driver = AsyncGraphDatabase.driver(
             neo4j_url, auth=(neo4j_user, neo4j_password),
@@ -54,8 +55,7 @@ class DecompositionPipeline(RetrievalPipeline):
 
         Args:
             subquestion: The subquestion to answer.
-            memory: List of previous question-answer pairs.
-            retrieve_k: Number of documents to retrieve.
+            memory: List of previous question-answer strings.
 
         Returns:
             Formatted string with the subquestion and its answer.
@@ -85,15 +85,14 @@ class DecompositionPipeline(RetrievalPipeline):
         return f"Sub-question:  {subquestion}\nAnswer:  {parsed.final_answer}"
 
     async def _generate_answer(self, query: str, sub_questions: List[str]) -> Dict[str, str]:
-        """Generate final answer from subquestions.
+        """Generate the final answer by sequentially answering subquestions.
 
         Args:
-            original_question: The original question.
+            query: The original question.
             sub_questions: List of decomposed subquestions.
-            retrieve_k: Number of documents to retrieve.
 
         Returns:
-            Dictionary with 'answer', 'reasoning', and 'knowledge' keys.
+            Dict with 'answer', 'reasoning', and 'knowledge' keys.
         """
         memory = []
 
@@ -125,5 +124,6 @@ class DecompositionPipeline(RetrievalPipeline):
         }
 
     async def run(self, query: str) -> Dict[str, str]:
+        """Decompose the query and generate the final answer."""
         sub_queries = await self._decompose_question(query)
         return await self._generate_answer(query, sub_queries)

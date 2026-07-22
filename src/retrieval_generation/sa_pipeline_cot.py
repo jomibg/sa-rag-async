@@ -7,13 +7,16 @@ from .graph import GraphRetrievalMixin
 _CONTEXT_PREFIX_LEN = len("### Context \n")
 
 class SaPipelineCot(RetrievalPipeline, GraphRetrievalMixin):
+    """Spreading-activation RAG pipeline with chain-of-thought reasoning."""
+
     def __init__(self, name, neo4j_url, neo4j_user, neo4j_password,
         llm_endpoint_url, llm_api_key, llm_model, embedding_model,
         answering_prompt, reasoning_enabled, reasoning_prompt, reasoning_steps,
-        retrieve_k, 
+        retrieve_k,
         # sa parameters
         activating_descriptions, normalization_parameter, activation_threshold, pruning_threshold, k_hop
     ):
+        """Initialize the SA CoT pipeline with Neo4j driver and SA parameters."""
         super().__init__(llm_endpoint_url, llm_api_key, llm_model, embedding_model, name) 
         self.driver = AsyncGraphDatabase.driver(
             neo4j_url, auth=(neo4j_user, neo4j_password),
@@ -35,6 +38,15 @@ class SaPipelineCot(RetrievalPipeline, GraphRetrievalMixin):
 
 
     async def _generate_answer(self, query: str, context: str) -> Dict[str, str]:
+        """Generate an answer for the query using the given context.
+
+        Args:
+            query: The user question.
+            context: Context string assembled from the knowledge graph.
+
+        Returns:
+            Dict with 'answer', 'reasoning', and 'knowledge' keys.
+        """
 
         if self.reasoning_enabled:
             context, _ = await self._apply_reasoning_steps(query, context, self.retrieve_k)
@@ -55,6 +67,16 @@ class SaPipelineCot(RetrievalPipeline, GraphRetrievalMixin):
 
 
     async def _apply_reasoning_steps(self, query: str, context: str, top_k: int) -> tuple:
+        """Iteratively refine context via SA retrievals until the answer is possible.
+
+        Args:
+            query: The user question.
+            context: Current context string.
+            top_k: Number of documents to retrieve per follow-up.
+
+        Returns:
+            Tuple of (refined_context, final_reasoning_response).
+        """
         reasoning_response = None
 
         for step in range(self.reasoning_steps):
@@ -87,7 +109,7 @@ class SaPipelineCot(RetrievalPipeline, GraphRetrievalMixin):
         return context, reasoning_response
 
     async def run(self, query: str) -> Dict[str, str]:
-        """The fixed algorithm skeleton shared by every pipeline."""
+        """Run SA knowledge acquisition and generate the final answer."""
         query_embedding = await self._embed(query)
         context = await self._knowledge_acquisition_step(
                 query_embedding,

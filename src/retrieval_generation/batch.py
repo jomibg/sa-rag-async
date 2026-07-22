@@ -13,25 +13,19 @@ async def retrieve_generate(
 ) -> List:
     """Answer a batch of questions with one retrieval-generation pipeline.
 
-    The pipeline's `run()` is invoked concurrently for every question, but
-    in-flight calls are capped at `max_concurrency` so the model/embedding
-    server is not overwhelmed. Answers are returned in the SAME order as
-    `questions` regardless of completion order.
+    The pipeline's `run()` is invoked concurrently, with in-flight calls
+    capped at `max_concurrency`. Answers are returned in input order.
 
     Args:
-        pipeline: any concrete RetrievalPipeline (vector / pre / post).
-        questions: ordered iterable of user questions.
-        top_k: forwarded to `pipeline.run`.
-        max_concurrency: maximum number of questions processed at once.
-            Tune to your Ollama/model server capacity (start at 2–4 on a
-            single-GPU box and raise while watching utilization).
-        show_progress: if True, wrap gather in tqdm for a live bar.
-        return_exceptions: forwarded to asyncio.gather. When True, a failed
-            question yields its Exception object in the result list instead
-            of aborting the whole batch.
+        pipeline: A concrete RetrievalPipeline instance.
+        questions: Ordered iterable of user questions.
+        max_concurrency: Maximum number of questions processed at once.
+        show_progress: If True, show a tqdm progress bar.
+        return_exceptions: If True, failed questions yield Exception objects
+            instead of aborting the batch.
 
     Returns:
-        List of answers (or Exception objects) aligned 1:1 with `questions`.
+        List of answers aligned 1:1 with `questions`.
     """
     if max_concurrency < 1:
         raise ValueError("max_concurrency must be >= 1")

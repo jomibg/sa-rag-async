@@ -52,6 +52,7 @@ EMBED_TEXTS = [
 
 
 async def time_chat_call(client, model, prompt):
+    """Time a single chat-completion call and return its duration in seconds."""
     t0 = time.perf_counter()
     resp = await client.chat.completions.create(
         model=model,
@@ -66,6 +67,7 @@ async def time_chat_call(client, model, prompt):
 
 
 async def time_embed_call(client, model, text):
+    """Time a single embedding call and return its duration in seconds."""
     t0 = time.perf_counter()
     resp = await client.embeddings.create(model=model, input=[text])
     dur = time.perf_counter() - t0
@@ -74,6 +76,7 @@ async def time_embed_call(client, model, text):
 
 
 async def run_sequential(client, model, kind, items):
+    """Run calls sequentially and return the list of per-call durations."""
     durations = []
     for item in items:
         if kind == "chat":
@@ -86,6 +89,7 @@ async def run_sequential(client, model, kind, items):
 
 
 async def run_concurrent(client, model, kind, items, log_starts=False):
+    """Run calls concurrently and return per-call durations and total wall-clock."""
     async def one(i, item):
         if log_starts:
             print(f"  [{time.strftime('%H:%M:%S')}.{int(time.perf_counter()*1000)%1000:03d}] "
@@ -106,11 +110,13 @@ async def run_concurrent(client, model, kind, items, log_starts=False):
 
 
 def truncate(s, n):
+    """Truncate a string to n characters, replacing newlines with spaces."""
     s = s.replace("\n", " ")
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
 def report(label, seq_durations, conc_durations, conc_total):
+    """Print a comparison of sequential vs concurrent timings with a verdict."""
     sum_seq = sum(seq_durations)
     sum_conc = sum(conc_durations)
     n = len(seq_durations)
@@ -135,6 +141,7 @@ def report(label, seq_durations, conc_durations, conc_total):
 
 
 async def main():
+    """Probe Ollama concurrency by timing sequential vs concurrent calls."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--endpoint", default="http://localhost:11434/v1")
     parser.add_argument("--api-key", default="not-needed")

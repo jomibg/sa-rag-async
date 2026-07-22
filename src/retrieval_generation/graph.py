@@ -41,6 +41,7 @@ async def create_adj_dict(normalization_parameter, arc_list: List[Dict], initial
     """Creates an adjacency dictionary from the list of arcs.
 
     Args:
+        normalization_parameter: Value used to normalize relation similarity.
         arc_list: List of dictionaries containing relation information.
         initially_activated: List of initially activated entity names.
 
@@ -71,7 +72,6 @@ class GraphRetrievalMixin:
 
     Assumes the inheriting class has:
     - self.driver (Neo4j AsyncGraphDatabase driver)
-    - self.embedding_pipeline (EmbeddingPipeline)
     - self.k_hop (int)
     - self.normalization_parameter (float)
     """
@@ -126,6 +126,15 @@ class GraphRetrievalMixin:
             return [r.data()['relation'] async for r in results]
 
     async def _retrieve_activated_entities(self, query_embedding: List[float], top_k: int) -> List[str]:
+        """Retrieve top-k entity names whose descriptions match the query embedding.
+
+        Args:
+            query_embedding: Embedding vector of the query.
+            top_k: Number of top entities to return.
+
+        Returns:
+            List of entity names.
+        """
         query = """
                 WITH $query_embedding AS queryEmbedding
                 MATCH (d:Description)
@@ -140,7 +149,11 @@ class GraphRetrievalMixin:
             return [r.data()['name'] async for r in results]
 
     async def _retrieve_entities(self, query_embedding: List[float], top_k: int) -> List[str]:
-        """Seed entities (top_k by description similarity) plus their k-hop neighbours."""
+        """Retrieve seed entities (top_k by description similarity) plus their k-hop neighbours.
+
+        Returns:
+            List of entity names.
+        """
         seed_names = await self._retrieve_activated_entities(query_embedding, top_k)
         neighbor_names = await self._retrieve_k_hop_neighbours(seed_names, self.k_hop)
         return list(set(seed_names + neighbor_names))

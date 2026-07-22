@@ -9,26 +9,28 @@ from retrieval_generation import (
     SaPipelineDecomp
     )
 
-LLM_ENDPOINT = "http://localhost:11434/v1"
-LLM_API_KEY = "not-needed"
+LLM_ENDPOINT = os.environ["LLM_BASE_URL"]
+LLM_API_KEY = os.environ["LLM_API_KEY"]
 LLM_MODEL = "phi4-mini:latest"
 EMBEDDING_MODEL = "bge-large:latest"
-NEO4J_URL = "bolt://3.86.183.59"
-NEO4J_USER = "neo4j"
-NEO4J_PW = "nod-bail-bins"
+NEO4J_URL = os.environ["NEO4J_URL"]
+NEO4J_USER = os.environ["NEO4J_USER"]
+NEO4J_PW = os.environ["NEO4J_PASSWORD"]
 ANSWERING_PROMPT="../prompts/answering.txt"
 REASONING_PROMPT_COT="../prompts/reasoning_cot.txt"
 REASONING_PROMPT_DECOMP="../prompts/reasoning_decomposition.txt"
 
 @dataclass
 class RunConfigs:
+    """Runtime configuration for a pipeline run."""
+
     # GENERAL
-    sample_data: bool = False
+    sample_data: bool = True
     number_of_questions: int = 2
     benchmark: str = "MuSiQuE"  # 'TwoWikiMultiHop', 'MuSiQuE'
-    ingest_corpus: bool = False          # was: ingest_cropus (typo)
+    ingest_corpus: bool = True          # was: ingest_cropus (typo)
     answering_questions: bool = True
-    show_progress_answering: bool = True
+    show_progress_answering: bool = False
     evaluating_answers: bool = True 
     evaluation_metrics: List[str] = field(default_factory=lambda: ["EM", "f1"])
     concurrency: int = 5
@@ -52,6 +54,7 @@ class RunConfigs:
     template_ner_loc: str = "../prompts/ner.txt"
 
     def __post_init__(self):
+        """Set default dataset and sample paths based on the chosen benchmark."""
         if self.dataset_path is None:
             dir_path = "../datasets"
             if self.benchmark == "MuSiQuE":

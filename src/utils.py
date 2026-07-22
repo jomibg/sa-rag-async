@@ -2,18 +2,17 @@ from typing import Dict, Any
 import json
 
 def load_json_file(file_path: str) -> Dict[str, Any]:
-    """
-    Load JSON file with consistent error handling.
+    """Load and parse a JSON file.
 
     Args:
-        file_path: Path to the JSON file to load
+        file_path: Path to the JSON file to load.
 
     Returns:
-        Parsed JSON content as dictionary
+        Parsed JSON content as a dictionary.
 
     Raises:
-        FileNotFoundError: If file does not exist
-        ValueError: If JSON is malformed
+        FileNotFoundError: If the file does not exist.
+        ValueError: If the JSON is malformed.
     """
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -25,12 +24,11 @@ def load_json_file(file_path: str) -> Dict[str, Any]:
 
 
 def save_json_file(file_path: str, data: Any) -> None:
-    """
-    Save data to JSON file.
+    """Serialize data to a JSON file.
 
     Args:
-        file_path: Path where to save the JSON file
-        data: Data to serialize as JSON
+        file_path: Path where to save the JSON file.
+        data: Data to serialize as JSON.
     """
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)

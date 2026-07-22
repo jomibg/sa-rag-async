@@ -29,6 +29,7 @@ class MusiqueQAAdapter:
         embedding_batch_size: int = 64,
         dedup_threshold: float = 0.99,
     ):
+        """Initialize the adapter with embedding endpoint and dedup settings."""
         self.client = AsyncOpenAI(
             api_key=embedding_api_key, base_url=embedding_endpoint_url
         )
@@ -39,6 +40,7 @@ class MusiqueQAAdapter:
 
     # ---- Async batched embedding (Ollama /v1/embeddings) ---------------
     async def _embed_batch(self, texts: List[str]) -> List[List[float]]:
+        """Embed a list of texts in a single API call, preserving input order."""
         if not texts:
             return []
         resp = await self.client.embeddings.create(
@@ -47,6 +49,7 @@ class MusiqueQAAdapter:
         return [d.embedding for d in sorted(resp.data, key=lambda d: d.index)]
 
     async def _embed_all(self, texts: List[str]) -> List[np.ndarray]:
+        """Embed all texts in batches of `embedding_batch_size`."""
         out: List[np.ndarray] = []
         for i in range(0, len(texts), self.embedding_batch_size):
             batch = texts[i : i + self.embedding_batch_size]
@@ -56,6 +59,7 @@ class MusiqueQAAdapter:
 
     # ---- Pure-CPU helpers (unchanged from original) -------------------
     def _get_golden_context(self, item: dict[str, Any]) -> str:
+        """Build the golden supporting context for a Musique item."""
         golden_context = []
         paragraphs = item.get("paragraphs", [])
         for step in item.get("question_decomposition", []):
@@ -69,6 +73,7 @@ class MusiqueQAAdapter:
         return "\n".join(golden_context)
 
     def _process_context(self, golden_context: str) -> str:
+        """Filter golden context to keep only question and answer lines."""
         context = golden_context.split("\n")
         new_context = []
         for p in context:
@@ -79,6 +84,7 @@ class MusiqueQAAdapter:
         return "\n".join(new_context)
 
     def _extract_entities(self, new_context: str) -> str:
+        """Extract answer entities from processed context, joined by '|'."""
         context = new_context.split("\n")
         entities = []
         for p in context:
@@ -89,6 +95,10 @@ class MusiqueQAAdapter:
     def _get_question_answer_pair(
         self, item: dict[str, Any], load_golden_context: bool = False
     ) -> dict[str, Any]:
+        """Extract a question-answer pair from a raw dataset item.
+
+        Optionally includes golden context and entities.
+        """
         qa_pair = {
             "id": item.get("id", ""),
             "question": item.get("question", ""),
@@ -107,6 +117,7 @@ class MusiqueQAAdapter:
 
     # ---- Raw corpus loading (file I/O, sync is fine here) -------------
     def _get_raw_corpus(self) -> List[dict[str, Any]]:
+        """Load raw Musique corpus from the local dataset file."""
         if not os.path.exists(self.dataset_path):
             raise FileNotFoundError(
                 f"Dataset file not found at {self.dataset_path}. "
@@ -118,6 +129,11 @@ class MusiqueQAAdapter:
 
     # ---- Corpus extraction with batched, in-memory cosine dedup --------
     async def _build_corpus(self, raw_corpus: List[dict[str, Any]]) -> List[str]:
+        """Build a deduplicated corpus from raw items via cosine-similarity.
+
+        Removes paragraphs with the same title whose embedding similarity
+        exceeds `dedup_threshold`.
+        """
         # Gather all (title, text) pairs from every item, preserving order.
         flat: List[Tuple[str, str]] = []
         for item in raw_corpus:
@@ -152,6 +168,7 @@ class MusiqueQAAdapter:
         seed: int = 42,
         load_golden_context: bool = True,
     ) -> Tuple[List[str], List[dict[str, Any]]]:
+        """Load and return a (corpus, qa_pairs) tuple, optionally sampling `limit` items."""
         raw_corpus = self._get_raw_corpus()
         if limit is not None and 0 < limit < len(raw_corpus):
             random.seed(seed)

@@ -5,13 +5,15 @@ from .structured_outputs import DecompositionResponse, ModelResponse
 from .graph import GraphRetrievalMixin
 
 class SaPipelineDecomp(RetrievalPipeline, GraphRetrievalMixin):
+    """Spreading-activation RAG pipeline with question decomposition."""
 
     def __init__(self, name, neo4j_url, neo4j_user, neo4j_password,
         llm_endpoint_url, llm_api_key, llm_model, embedding_model,
-        answering_prompt, reasoning_prompt, retrieve_k, 
+        answering_prompt, reasoning_prompt, retrieve_k,
         # sa parameters
         activating_descriptions, normalization_parameter, activation_threshold, pruning_threshold, k_hop
     ):
+        """Initialize the SA decomposition pipeline with Neo4j driver and SA parameters."""
         super().__init__(llm_endpoint_url, llm_api_key, llm_model, embedding_model, name)
         self.driver = AsyncGraphDatabase.driver(
             neo4j_url, auth=(neo4j_user, neo4j_password),
@@ -54,6 +56,15 @@ class SaPipelineDecomp(RetrievalPipeline, GraphRetrievalMixin):
         return sub_queries
 
     async def _answer_subquestion(self, subquestion: str, memory: List[str]) -> str:
+        """Answer a single subquestion using SA retrieval and prior answers.
+
+        Args:
+            subquestion: The subquestion to answer.
+            memory: List of previous question-answer strings.
+
+        Returns:
+            Formatted string with the subquestion and its answer.
+        """
         if memory:
             extended_question = f"{subquestion}\n\n" + '\n\n'.join(memory)
         else:
@@ -84,6 +95,15 @@ class SaPipelineDecomp(RetrievalPipeline, GraphRetrievalMixin):
         return f"Sub-question:  {subquestion}\nAnswer: {parsed.final_answer}"
 
     async def _generate_answer(self, query: str, sub_questions: List[str]) -> Dict[str, str]:
+        """Generate the final answer by sequentially answering subquestions.
+
+        Args:
+            query: The original question.
+            sub_questions: List of decomposed subquestions.
+
+        Returns:
+            Dict with 'answer', 'reasoning', and 'knowledge' keys.
+        """
         memory = []
 
         # Answer each subquestion sequentially
@@ -125,5 +145,6 @@ class SaPipelineDecomp(RetrievalPipeline, GraphRetrievalMixin):
 
 
     async def run(self, query: str) -> Dict[str, str]:
+        """Decompose the query and generate the final answer via SA retrieval."""
         sub_queries = await self._decompose_question(query)
         return await self._generate_answer(query, sub_queries)

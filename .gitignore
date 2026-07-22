@@ -12,7 +12,9 @@ wheels/
 results/**/*.json
 results/**/*.html
 datasets/*.json
+datasets/*.jsonl
 datasets/**/*.json
+datasets/**/*.jsonl
 
 # Force-keep the placeholder files (optional, since .gitkeep isn't matched above)
 !results/**/.gitkeep
