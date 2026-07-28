@@ -136,7 +136,7 @@ class AdvancedKGConstructor:
         # Textualization you will embed. Keep ordering stable; we zip by index below.
         doc_text = text
         desc_texts = [e.entity_information or "" for e in entities]
-        rel_texts = [f"{h} {rel} {t}" for (h, t, rel) in relationships]
+        rel_texts = [f"{h} {rel} {t}" for (h, rel, t) in relationships]
 
         # One batched embedding call per chunk — amortizes Ollama overhead.
         # Order: [doc, *descs, *rels]

@@ -12,7 +12,7 @@ from retrieval_generation import (
 LLM_ENDPOINT = os.environ["LLM_BASE_URL"]
 LLM_API_KEY = os.environ["LLM_API_KEY"]
 LLM_MODEL = "phi4:latest"
-EMBEDDING_MODEL = "bge-large:latest"
+EMBEDDING_MODEL = "qwen3-embedding:0.6b"
 NEO4J_URL = os.environ["NEO4J_URL"]
 NEO4J_USER = os.environ["NEO4J_USER"]
 NEO4J_PW = os.environ["NEO4J_PASSWORD"]
@@ -26,14 +26,14 @@ class RunConfigs:
 
     # GENERAL
     sample_data: bool = False
-    number_of_questions: int = 500
+    number_of_questions: int = 200
     benchmark: str = "MuSiQuE"  # 'TwoWikiMultiHop', 'MuSiQuE'
     ingest_corpus: bool = False          # was: ingest_cropus (typo)
     answering_questions: bool = True
     show_progress_answering: bool = False
     evaluating_answers: bool = True
     evaluation_metrics: List[str] = field(default_factory=lambda: ["EM", "f1"])
-    concurrency: int = 10
+    concurrency: int = 8
 
     # LLM/EMBEDDINGS
     llm_endpoint: str = LLM_ENDPOINT     # was: llm_enpoint (typo)
@@ -89,7 +89,23 @@ SaPipelineCot(
         activation_threshold=0.5,
         pruning_threshold=0.45,
         k_hop = 3
-        )
+        ),
+
+        VectorRetrievalPipeline(
+                name="vector_cot_5",
+                neo4j_url=NEO4J_URL,
+                neo4j_user=NEO4J_USER,
+                neo4j_password=NEO4J_PW,
+                llm_endpoint_url=LLM_ENDPOINT,
+                llm_api_key=LLM_API_KEY,
+                llm_model=LLM_MODEL,
+                embedding_model=EMBEDDING_MODEL,
+                answering_prompt=ANSWERING_PROMPT,
+                reasoning_enabled=True,
+                reasoning_prompt=REASONING_PROMPT_COT,
+                reasoning_steps=3,
+                retrieve_k=5
+            )
 ]
 
 '''[

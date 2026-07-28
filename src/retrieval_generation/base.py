@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, Dict
 from openai import AsyncOpenAI
 
+DEFAULT_QUERY_PROMPT = 'Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery:'
 
 class RetrievalPipeline(ABC):
     """Abstract base for retrieval-generation pipelines (Template Method).
@@ -26,8 +27,10 @@ class RetrievalPipeline(ABC):
 
     # ---------- shared / invariant ----------
 
-    async def _embed(self, text: str) -> List[float]:
+    async def _embed(self, text: str, query_prefix: Optional[bool] = False) -> List[float]:
         """Embed a single string via the OpenAI-compatible embeddings endpoint."""
+        if query_prefix:
+            text = f"{DEFAULT_QUERY_PROMPT} {text}"
         resp = await self.client.embeddings.create(
             model=self.embedding_model,
             input=[text],            # NOTE: single string, wrapped in a list
@@ -45,7 +48,7 @@ class RetrievalPipeline(ABC):
         Returns:
             List of retrieved chunk text strings.
         """
-        q_emb = await self._embed(query)
+        q_emb = await self._embed(query, query_prefix=True)
         cypher = """
             WITH $query_embedding AS query_embedding 
             CALL db.index.vector.queryNodes('textEmbedding', 500, query_embedding) 

@@ -70,7 +70,7 @@ class SaPipelineDecomp(RetrievalPipeline, GraphRetrievalMixin):
         else:
             extended_question = subquestion
 
-        query_embedding = await self._embed(extended_question)
+        query_embedding = await self._embed(extended_question, query_prefix=True)
         context = await self._knowledge_acquisition_step(
             query_embedding,
             self.retrieve_k,
@@ -114,7 +114,7 @@ class SaPipelineDecomp(RetrievalPipeline, GraphRetrievalMixin):
             )
             memory.append(answer_str)
 
-        query_embedding = await self._embed(query)
+        query_embedding = await self._embed(query, query_prefix=True)
         context = await self._knowledge_acquisition_step(
             query_embedding,
             self.retrieve_k,

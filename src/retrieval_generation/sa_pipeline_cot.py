@@ -95,7 +95,7 @@ class SaPipelineCot(RetrievalPipeline, GraphRetrievalMixin):
                 break
             summarized_context = reasoning_response.provided_context
             additional_question = reasoning_response.additional_question
-            query_embedding = await self._embed(additional_question)
+            query_embedding = await self._embed(additional_question, query_prefix=True)
             new_context = await self._knowledge_acquisition_step(
                 query_embedding,
                 self.retrieve_k,
@@ -110,7 +110,7 @@ class SaPipelineCot(RetrievalPipeline, GraphRetrievalMixin):
 
     async def run(self, query: str) -> Dict[str, str]:
         """Run SA knowledge acquisition and generate the final answer."""
-        query_embedding = await self._embed(query)
+        query_embedding = await self._embed(query, query_prefix=True)
         context = await self._knowledge_acquisition_step(
                 query_embedding,
                 self.retrieve_k,
