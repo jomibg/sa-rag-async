@@ -103,8 +103,8 @@ class SaPipelineCot(RetrievalPipeline, GraphRetrievalMixin):
                 self.activation_threshold,
                 self.pruning_threshold
             )
-            context = (f"# Known information\n{summarized_context}\n"
-                       f"# Additional facts{new_context[_CONTEXT_PREFIX_LEN:]}")
+            context = (f"# Known information:\n{summarized_context}\n"
+                       f"# Additional facts:\n{new_context[_CONTEXT_PREFIX_LEN:]}")
 
         return context, reasoning_response
 

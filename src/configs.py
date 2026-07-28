@@ -11,7 +11,7 @@ from retrieval_generation import (
 
 LLM_ENDPOINT = os.environ["LLM_BASE_URL"]
 LLM_API_KEY = os.environ["LLM_API_KEY"]
-LLM_MODEL = "phi4-mini:latest"
+LLM_MODEL = "phi4:latest"
 EMBEDDING_MODEL = "bge-large:latest"
 NEO4J_URL = os.environ["NEO4J_URL"]
 NEO4J_USER = os.environ["NEO4J_USER"]
@@ -25,15 +25,15 @@ class RunConfigs:
     """Runtime configuration for a pipeline run."""
 
     # GENERAL
-    sample_data: bool = True
-    number_of_questions: int = 2
+    sample_data: bool = False
+    number_of_questions: int = 500
     benchmark: str = "MuSiQuE"  # 'TwoWikiMultiHop', 'MuSiQuE'
-    ingest_corpus: bool = True          # was: ingest_cropus (typo)
+    ingest_corpus: bool = False          # was: ingest_cropus (typo)
     answering_questions: bool = True
     show_progress_answering: bool = False
-    evaluating_answers: bool = True 
+    evaluating_answers: bool = True
     evaluation_metrics: List[str] = field(default_factory=lambda: ["EM", "f1"])
-    concurrency: int = 5
+    concurrency: int = 10
 
     # LLM/EMBEDDINGS
     llm_endpoint: str = LLM_ENDPOINT     # was: llm_enpoint (typo)
@@ -67,9 +67,32 @@ class RunConfigs:
             self.sample_corpus_path = os.path.join("../results/corpus", f"{self.benchmark}_corpus_{self.number_of_questions}.json")
         if self.sample_qa_path is None:
             self.sample_qa_path = os.path.join("../results/questions", f"{self.benchmark}_qa_{self.number_of_questions}.json")
-        
+
 
 RAG_PIPELINES = [
+SaPipelineCot(
+        name="sa_cot",
+        neo4j_url=NEO4J_URL,
+        neo4j_user=NEO4J_USER,
+        neo4j_password=NEO4J_PW,
+        llm_endpoint_url=LLM_ENDPOINT,
+        llm_api_key=LLM_API_KEY,
+        llm_model=LLM_MODEL,
+        embedding_model=EMBEDDING_MODEL,
+        answering_prompt=ANSWERING_PROMPT,
+        reasoning_enabled=True,
+        reasoning_prompt=REASONING_PROMPT_COT,
+        reasoning_steps=2,
+        retrieve_k=4,
+        activating_descriptions=4,
+        normalization_parameter=0.4,
+        activation_threshold=0.5,
+        pruning_threshold=0.45,
+        k_hop = 3
+        )
+]
+
+'''[
     VectorRetrievalPipeline(
         name="vector_cot_5",
         neo4j_url=NEO4J_URL,
@@ -82,9 +105,10 @@ RAG_PIPELINES = [
         answering_prompt=ANSWERING_PROMPT,
         reasoning_enabled=True,
         reasoning_prompt=REASONING_PROMPT_COT,
-        reasoning_steps=2,
+        reasoning_steps=3,
         retrieve_k=5
     ),
+
     VectorRetrievalPipeline(
         name="vector_cot_10",
         neo4j_url=NEO4J_URL,
@@ -97,7 +121,7 @@ RAG_PIPELINES = [
         answering_prompt=ANSWERING_PROMPT,
         reasoning_enabled=True,
         reasoning_prompt=REASONING_PROMPT_COT,
-        reasoning_steps=2,
+        reasoning_steps=3,
         retrieve_k=10
     ),
     VectorRetrievalPipeline(
@@ -112,7 +136,7 @@ RAG_PIPELINES = [
         answering_prompt=ANSWERING_PROMPT,
         reasoning_enabled=False,
         reasoning_prompt=REASONING_PROMPT_COT,
-        reasoning_steps=2,
+        reasoning_steps=3,
         retrieve_k=5
     ),
     VectorRetrievalPipeline(
@@ -127,7 +151,7 @@ RAG_PIPELINES = [
         answering_prompt=ANSWERING_PROMPT,
         reasoning_enabled=False,
         reasoning_prompt=REASONING_PROMPT_COT,
-        reasoning_steps=2,
+        reasoning_steps=3,
         retrieve_k=10
     ),
     DecompositionPipeline(
@@ -143,7 +167,6 @@ RAG_PIPELINES = [
         reasoning_prompt=REASONING_PROMPT_DECOMP,
         retrieve_k=5
         ),
-    
     SaPipelineDecomp(
         name="sa_decomposition",
         neo4j_url=NEO4J_URL,
@@ -155,8 +178,8 @@ RAG_PIPELINES = [
         embedding_model=EMBEDDING_MODEL,
         answering_prompt=ANSWERING_PROMPT,
         reasoning_prompt=REASONING_PROMPT_DECOMP,
-        retrieve_k=5,
-        activating_descriptions=3,
+        retrieve_k=4,
+        activating_descriptions=4,
         normalization_parameter=0.4,
         activation_threshold=0.5,
         pruning_threshold=0.45,
@@ -174,12 +197,13 @@ RAG_PIPELINES = [
         answering_prompt=ANSWERING_PROMPT,
         reasoning_enabled=True,
         reasoning_prompt=REASONING_PROMPT_COT,
-        reasoning_steps=2,
-        retrieve_k=5,
-        activating_descriptions=3,
+        reasoning_steps=3,
+        retrieve_k=4,
+        activating_descriptions=4,
         normalization_parameter=0.4,
         activation_threshold=0.5,
         pruning_threshold=0.45,
         k_hop = 3
         )
 ]
+'''

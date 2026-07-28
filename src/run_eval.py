@@ -49,7 +49,6 @@ async def amain():
         for pipeline in RAG_PIPELINES:
             qa_pairs = load_json_file(cfg.sample_qa_path)
             questions = [item["question"] for item in qa_pairs]
-            golden_answers = [item["answer"] for item in qa_pairs]
 
             answers = await retrieve_generate(
                 pipeline=pipeline, 
