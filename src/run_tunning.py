@@ -31,9 +31,9 @@ LLM_MODEL = "phi4-mini:latest"
 EMBEDDING_MODEL = "bge-large:latest"
 
 # Neo4j (reachable without Docker)
-NEO4J_URL = "bolt://3.210.183.5"
-NEO4J_USER = "neo4j"
-NEO4J_PW = "laser-waste-users"
+NEO4J_URL = ""
+NEO4J_USER = ""
+NEO4J_PW = ""
 
 # Prompt / dataset paths (relative to src/)
 ANSWERING_PROMPT = "../prompts/answering.txt"
