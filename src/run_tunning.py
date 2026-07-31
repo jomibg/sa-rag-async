@@ -17,18 +17,18 @@ from evaluation import execute_evaluation
 # LOCAL CONFIGURATION (no configs.py / env vars / Docker assumptions)
 # =====================================================================
 BENCHMARK = "MuSiQuE"            # 'TwoWikiMultiHop' or 'MuSiQuE'
-NUMBER_OF_QUESTIONS = 4
-BATCH_SIZE = 2                  # 4 batches of 50 questions
-N_TRIALS = 5
-TOP_K_RESULTS = 2
+NUMBER_OF_QUESTIONS = 200
+BATCH_SIZE = 50                  # 4 batches of 50 questions
+N_TRIALS = 40
+TOP_K_RESULTS = 5
 CONCURRENCY = 3
 SEED = 53
 
 # LLM / embeddings (local Ollama, OpenAI-compatible endpoint)
 LLM_ENDPOINT = "http://172.17.0.1:11434/v1"
 LLM_API_KEY = "not-needed"
-LLM_MODEL = "phi4-mini:latest"
-EMBEDDING_MODEL = "bge-large:latest"
+LLM_MODEL = "phi4:latest"
+EMBEDDING_MODEL = "qwen3-embedding:0.6b"
 
 # Neo4j (reachable without Docker)
 NEO4J_URL = ""
