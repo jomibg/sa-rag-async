@@ -1,7 +1,7 @@
 from collections import Counter
 import re
 
-from evaluation.test_case import TestCase
+from deepeval.test_case import LLMTestCase
 
 
 class F1ScoreMetric:
@@ -12,7 +12,7 @@ class F1ScoreMetric:
         self.score = None
         self.reason = None
 
-    def measure(self, test_case: TestCase) -> float:
+    def measure(self, test_case: LLMTestCase) -> float:
         """Compute token-level F1 score between actual and expected output.
 
         Returns:

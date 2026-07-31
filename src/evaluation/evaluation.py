@@ -1,14 +1,15 @@
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 from .metrics import METRIC_REGISTRY
-from .test_case import TestCase
+from deepeval.test_case import LLMTestCase, SingleTurnParams
 
 
-async def execute_evaluation(
+def execute_evaluation(
     questions: Sequence[str],
     answers: Sequence[str],
     golden_answers: Sequence[str],
     evaluator_metrics: Sequence[str],
+    eval_model: Optional[Any] = None,
 ) -> List[Dict[str, Any]]:
     """Evaluate a batch of produced answers against golden answers.
 
@@ -34,11 +35,23 @@ async def execute_evaluation(
 
     # One reusable instance per metric — matches the original DeepEvalAdapter,
     # which created metrics once in __init__ and reused them across all answers.
-    metric_instances = {name: METRIC_REGISTRY[name]() for name in evaluator_metrics}
+    metric_instances = {name: METRIC_REGISTRY[name]() for name in evaluator_metrics if name != "correctness"}
+    if "correctness" in evaluator_metrics:
+        metric_instances["correctness"] = METRIC_REGISTRY["correctness"](
+            criteria="Determine whether the actual output is factually correct based on the expected output.",
+            evaluation_steps=[
+            "Check whether the facts in 'actual output' contradicts any facts in 'expected output'",
+            "Do not concentrate on the style, grammar, or formatting of the answer. Answers are considered correct as long as they convey the same factual information as the expected output.",
+            "If the 'actual output' does not contradict the 'expected output' but does not convey information that is present in the 'expected output', it is considered completely incorrect. (0\\% correct)",
+            ],
+            evaluation_params=[SingleTurnParams.INPUT, SingleTurnParams.ACTUAL_OUTPUT, SingleTurnParams.EXPECTED_OUTPUT],
+            model=eval_model,
+        
+        ) 
 
     results: List[Dict[str, Any]] = []
     for q, a, gold in zip(questions, answers, golden_answers):
-        test_case = TestCase(input=q, actual_output=a, expected_output=gold)
+        test_case = LLMTestCase(input=q, actual_output=a, expected_output=gold)
 
         metric_results: Dict[str, Dict[str, Any]] = {}
         for name in evaluator_metrics:

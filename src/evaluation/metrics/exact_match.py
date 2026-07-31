@@ -1,4 +1,4 @@
-from evaluation.test_case import TestCase
+from deepeval.test_case import LLMTestCase
 
 
 class ExactMatchMetric:
@@ -9,7 +9,7 @@ class ExactMatchMetric:
         self.score = None
         self.reason = None
 
-    def measure(self, test_case: TestCase) -> float:
+    def measure(self, test_case: LLMTestCase) -> float:
         """Compute exact-match score between actual and expected output.
 
         Returns:

@@ -8,7 +8,7 @@ from dataset_adapters import load_corpus
 from retrieval_generation import retrieve_generate
 from evaluation import execute_evaluation, generate_metrics_dashboard
 from configs import RunConfigs, RAG_PIPELINES
-
+from deepeval.models import OllamaModel
 
 async def amain():
     """Run the full pipeline: load corpus, ingest, answer, and evaluate."""
@@ -60,17 +60,22 @@ async def amain():
             save_json_file(f"../results/answers/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.json", answers)
 
     if cfg.evaluating_answers:
+        eval_model = OllamaModel(
+            model=cfg.llm_model,
+            base_url=cfg.llm_endpoint.rstrip("/").removesuffix("/v1"),  # remove /v1 from the endpoint
+            temperature=0.0
+        )
         for pipeline in RAG_PIPELINES:
             qa_pairs = load_json_file(cfg.sample_qa_path)
             questions = [item["question"] for item in qa_pairs]
             golden_answers = [item["answer"] for item in qa_pairs]
             answers = load_json_file(f"../results/answers/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.json")
-            produced_answers = [a["answer"] if not isinstance(a, Exception) else "" for a in answers]
-            results = await execute_evaluation(questions, produced_answers,
-                golden_answers, evaluator_metrics=["EM", "f1"],)
+            produced_answers = [a["answer"] for a in answers]
+            results = execute_evaluation(questions, produced_answers,
+                golden_answers, evaluator_metrics=cfg.evaluation_metrics, eval_model=eval_model)
             save_json_file(f"../results/evaluation/metrics/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.json", results)
             generate_metrics_dashboard(f"../results/evaluation/metrics/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.json",
-                f"../results/evaluation/dashboards/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.html", "2wikimh")
+                f"../results/evaluation/dashboards/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.html", cfg.benchmark)
 
 if __name__ == "__main__":
     start_time = time.perf_counter()
