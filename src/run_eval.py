@@ -46,6 +46,11 @@ async def amain():
         )
 
     if cfg.answering_questions:
+        def _safe_answer(a):
+            if isinstance(a, Exception):
+                return {"answer": "", "error": repr(a)}
+            return a
+        
         for pipeline in RAG_PIPELINES:
             qa_pairs = load_json_file(cfg.sample_qa_path)
             questions = [item["question"] for item in qa_pairs]
@@ -57,6 +62,7 @@ async def amain():
                 show_progress=cfg.show_progress_answering,
                 return_exceptions=True,
             )
+            answers = [_safe_answer(a) for a in answers]
             save_json_file(f"../results/answers/{pipeline.name}_{cfg.benchmark}_{cfg.number_of_questions}.json", answers)
 
     if cfg.evaluating_answers:
