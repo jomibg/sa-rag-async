@@ -18,17 +18,17 @@ from evaluation import execute_evaluation
 # =====================================================================
 BENCHMARK = "MuSiQuE"            # 'TwoWikiMultiHop' or 'MuSiQuE'
 NUMBER_OF_QUESTIONS = 200
-BATCH_SIZE = 50                  # 4 batches of 50 questions
-N_TRIALS = 40
+BATCH_SIZE = 1                  
+N_TRIALS = 50
 TOP_K_RESULTS = 5
-CONCURRENCY = 3
+CONCURRENCY = 4
 SEED = 53
 
 # LLM / embeddings (local Ollama, OpenAI-compatible endpoint)
-LLM_ENDPOINT = "http://172.17.0.1:11434/v1"
-LLM_API_KEY = "not-needed"
-LLM_MODEL = "phi4:latest"
-EMBEDDING_MODEL = "qwen3-embedding:0.6b"
+LLM_ENDPOINT = ""
+LLM_API_KEY = ""
+LLM_MODEL = ""
+EMBEDDING_MODEL = ""
 
 # Neo4j (reachable without Docker)
 NEO4J_URL = ""
@@ -41,9 +41,6 @@ REASONING_PROMPT_COT = "../prompts/reasoning_cot.txt"
 TEMPLATE_RE_LOC = "../prompts/re.txt"
 TEMPLATE_NER_LOC = "../prompts/ner.txt"
 
-# Fixed SA pipeline params (not tuned here)
-ACTIVATION_THRESHOLD = 0.5
-K_HOP = 3
 
 # =====================================================================
 # Helpers
@@ -96,6 +93,8 @@ def _build_pipeline(
     normalization_parameter: float,
     pruning_threshold: float,
     shared_k: int,
+    activation_th: float,
+    k_hop=int 
 ) -> SaPipelineCot:
     return SaPipelineCot(
         name="sa_cot_tuning",
@@ -113,9 +112,9 @@ def _build_pipeline(
         retrieve_k=shared_k,
         activating_descriptions=shared_k,
         normalization_parameter=normalization_parameter,
-        activation_threshold=ACTIVATION_THRESHOLD,
+        activation_threshold=activation_th,
         pruning_threshold=pruning_threshold,
-        k_hop=K_HOP,
+        k_hop=k_hop,
     )
 
 
@@ -145,22 +144,37 @@ async def performance_function(
             return_exceptions=True,
         )
         answers = [_safe_answer(a) for a in answers]
-        produced = [a["answer"] for a in answers]
+        produced = [a.get("answer") or "" for a in answers]
 
-        results = execute_evaluation(
-            batch_questions,
-            produced,
-            batch_golden,
-            evaluator_metrics=["correctness"],
-            eval_model=eval_model,
-        )
+        # Skip items with empty produced answers (GEval rejects empty
+        # actual_output); treat missing model output as score 0 contributors.
+        eval_q, eval_a, eval_g = [], [], []
+        for q, a, g in zip(batch_questions, produced, batch_golden):
+            if a:
+                eval_q.append(q)
+                eval_a.append(a)
+                eval_g.append(g)
 
-        scores = [
-            r["metrics"]["correctness"]["score"]
-            for r in results
-            if r.get("metrics", {}).get("correctness", {}).get("score") is not None
-        ]
-        batch_avg = sum(scores) / len(scores) if scores else 0.0
+        n_empty = len(produced) - len(eval_a)
+        if eval_a:
+            results = execute_evaluation(
+                eval_q,
+                eval_a,
+                eval_g,
+                evaluator_metrics=["correctness"],
+                eval_model=eval_model,
+            )
+            scores = [
+                r["metrics"]["correctness"]["score"]
+                for r in results
+                if r.get("metrics", {}).get("correctness", {}).get("score")
+                is not None
+            ]
+            batch_avg = sum(scores) / len(batch_questions) if scores else 0.0
+        else:
+            batch_avg = 0.0
+        if n_empty:
+            print(f"  (skipped {n_empty} empty answers in batch {batch_idx + 1})")
         batch_scores.append(batch_avg)
         print(f"  batch {batch_idx + 1}/{len(batches)} correctness avg: {batch_avg:.4f}")
 
@@ -210,12 +224,14 @@ async def setup():
 async def trial_run(
     normalization_parameter: float,
     pruning_threshold: float,
+    activation_th: float,
+    k_hop: int,
     shared_k: int,
     questions: List[str],
     golden_answers: List[str],
     eval_model: OllamaModel,
 ) -> float:
-    pipeline = _build_pipeline(normalization_parameter, pruning_threshold, shared_k)
+    pipeline = _build_pipeline(normalization_parameter, pruning_threshold, shared_k, activation_th, k_hop)
     try:
         return await performance_function(pipeline, questions, golden_answers, eval_model)
     finally:
@@ -228,14 +244,20 @@ async def trial_run(
 def make_objective(questions, golden_answers, eval_model):
     def objective(trial: optuna.Trial) -> float:
         normalization_parameter = trial.suggest_float(
-            "normalization_parameter", 0.3, 0.5, step=0.05
+            "normalization_parameter", 0.1, 0.5, step=0.05
         )
         pruning_threshold = trial.suggest_float(
-            "pruning_threshold", 0.3, 0.5, step=0.05
+            "pruning_threshold", 0.0, 0.5, step=0.05
         )
         # retrieve_k and activating_descriptions share the same value
         shared_k = trial.suggest_int(
-            "retrieve_k_activating_descriptions", 2, 4, step=1
+            "retrieve_k_activating_descriptions", 2, 10, step=1
+        )
+        activation_th = trial.suggest_float(
+            "activation_threshold", 0.0, 0.5, step=0.05
+        )
+        k_hop = trial.suggest_int(
+            "k_hop", 1, 4, step=1
         )
 
         print(
@@ -248,6 +270,8 @@ def make_objective(questions, golden_answers, eval_model):
             trial_run(
                 normalization_parameter,
                 pruning_threshold,
+                activation_th,
+                k_hop,
                 shared_k,
                 questions,
                 golden_answers,
@@ -276,7 +300,12 @@ def main():
     objective = make_objective(questions, golden_answers, eval_model)
 
     study = optuna.create_study(direction="maximize", study_name="sa_cot_tuning")
-    study.optimize(objective, n_trials=N_TRIALS, show_progress_bar=True)
+    study.optimize(
+        objective,
+        n_trials=N_TRIALS,
+        show_progress_bar=True,
+        catch=(Exception,),
+    )
 
     # 7) Display results + top-5 params
     print("\n==================== STUDY SUMMARY ====================")
