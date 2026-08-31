@@ -1,6 +1,6 @@
 # SA-RAG
 
-Spreading-Activation Retrieval-Augmented Generation pipeline with knowledge-graph
+Asynchronous version of the Spreading-Activation Retrieval-Augmented Generation pipeline with knowledge-graph
 ingestion, benchmark evaluation, and multiple RAG strategies (vector, CoT,
 decomposition, and SA variants).
 
